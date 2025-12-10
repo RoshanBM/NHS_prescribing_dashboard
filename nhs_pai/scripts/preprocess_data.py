@@ -2,6 +2,51 @@ import pandas as pd
 import os
 
 class NHSDataProcessor:
+    BNF_CATEGORY_MAP = {
+        '0401': 'Hypnotics & Anxiolytics',
+        '0402': 'Psychosis & Related',
+        '0403': 'Antidepressants',
+        '0404': 'CNS Stimulants/ADHD',
+        '0405': 'Obesity',
+        '0406': 'Nausea & Vertigo',
+        '0407': 'Analgesics (Pain)',
+        '0408': 'Antiepileptics',
+        '0409': 'Parkinsonism',
+        '0410': 'Substance Dependence',
+        '0411': 'Dementia'
+    }
+
+    POSTCODE_REGION_MAP = {
+        'B': 'Birmingham', 'M': 'Manchester', 'S': 'Sheffield', 'L': 'Liverpool', 
+        'NG': 'Nottingham', 'NE': 'Newcastle upon Tyne', 'E': 'London (East)', 
+        'SE': 'London (South East)', 'CV': 'Coventry', 'SW': 'London (South West)', 
+        'LE': 'Leicester', 'LS': 'Leeds', 'DN': 'Doncaster', 'N': 'London (North)', 
+        'WA': 'Warrington', 'ST': 'Stoke-on-Trent', 'PE': 'Peterborough', 
+        'BS': 'Bristol', 'TN': 'Tunbridge Wells', 'GL': 'Gloucester', 
+        'W': 'London (West)', 'BN': 'Brighton', 'ME': 'Rochester (Medway)', 
+        'BD': 'Bradford', 'TS': 'Cleveland (Teesside)', 'RM': 'Romford', 
+        'OL': 'Oldham', 'DE': 'Derby', 'BB': 'Blackburn', 'RG': 'Reading', 
+        'CM': 'Chelmsford', 'HA': 'Harrow', 'PR': 'Preston', 'SS': 'Southend-on-Sea', 
+        'WS': 'Walsall', 'CH': 'Chester', 'NR': 'Norwich', 'PO': 'Portsmouth', 
+        'NW': 'London (North West)', 'GU': 'Guildford', 'PL': 'Plymouth', 
+        'SK': 'Stockport', 'MK': 'Milton Keynes', 'SO': 'Southampton', 'WN': 'Wigan', 
+        'KT': 'Kingston upon Thames', 'BL': 'Bolton', 'WV': 'Wolverhampton', 
+        'WF': 'Wakefield', 'NN': 'Northampton', 'UB': 'Southall (Uxbridge)', 
+        'TW': 'Twickenham', 'IP': 'Ipswich', 'CT': 'Canterbury', 'EX': 'Exeter', 
+        'DY': 'Dudley', 'YO': 'York', 'CR': 'Croydon', 'OX': 'Oxford', 'HU': 'Hull', 
+        'RH': 'Redhill', 'SN': 'Swindon', 'DL': 'Darlington', 'HP': 'Hemel Hempstead', 
+        'DA': 'Dartford', 'BH': 'Bournemouth', 'WR': 'Worcester', 'CB': 'Cambridge', 
+        'CO': 'Colchester', 'HD': 'Huddersfield', 'BR': 'Bromley', 'IG': 'Ilford', 
+        'BA': 'Bath', 'DH': 'Durham', 'LN': 'Lincoln', 'SR': 'Sunderland', 
+        'LU': 'Luton', 'SL': 'Slough', 'EN': 'Enfield', 'FY': 'Blackpool', 
+        'TR': 'Truro', 'CW': 'Crewe', 'SG': 'Stevenage', 'CA': 'Carlisle', 
+        'LA': 'Lancaster', 'TA': 'Taunton', 'SY': 'Shrewsbury', 'TQ': 'Torquay', 
+        'AL': 'St Albans', 'SM': 'Sutton', 'WD': 'Watford', 'HR': 'Hereford', 
+        'HG': 'Harrogate', 'SP': 'Salisbury', 'DT': 'Dorchester', 'HX': 'Halifax', 
+        'TF': 'Telford', 'WC': 'London (Western Central)', 'EC': 'London (East Central)', 
+        'TD': 'Galashiels (Scottish Borders)'
+    }
+
     def __init__(self, input_presc_file, input_addr_file, 
                  output_drugs, output_practices, output_prescriptions, 
                  target_chapter='04'):
@@ -15,6 +60,27 @@ class NHSDataProcessor:
         self.output_presc = output_prescriptions
         self.target_chapter = target_chapter
 
+    def get_category(self, bnf_code):
+        """Map BNF code to category based on first 4 digits."""
+        code_prefix = str(bnf_code)[:4]
+        return self.BNF_CATEGORY_MAP.get(code_prefix, 'Other')
+
+    def get_region(self, postcode):
+        """Map postcode to region based on first 1-2 letters."""
+        if not isinstance(postcode, str) or not postcode:
+            return 'Unknown'
+        
+        # Extract leading letters
+        import re
+        match = re.match(r"^[A-Z]+", postcode)
+        if match:
+            prefix = match.group(0)
+            # Try exact match (e.g. 'CV')
+            if prefix in self.POSTCODE_REGION_MAP:
+                return self.POSTCODE_REGION_MAP[prefix]
+            return 'Other'
+        return 'Unknown'
+
     def process(self):
         print("Step 1: Loading Practice Addresses...")
         try:
@@ -25,6 +91,17 @@ class NHSDataProcessor:
             
             # Select relevant columns
             practices = practices[['PRACTICE_CODE', 'PRACTICE_NAME', 'POSTCODE']]
+            
+            # Clean Data
+            # 1. Title Case Practice Name
+            practices['PRACTICE_NAME'] = practices['PRACTICE_NAME'].astype(str).str.title()
+            
+            # 2. Clean Postcode (Strip whitespace, ensure uppercase)
+            practices['POSTCODE'] = practices['POSTCODE'].astype(str).str.strip().str.upper()
+
+            # 3. Add Region Column
+            practices['region'] = practices['POSTCODE'].apply(self.get_region)
+
             practices.to_csv(self.output_practices, index=False)
             print(f"Saved {len(practices)} practices to {self.output_practices}")
         except Exception as e:
@@ -51,16 +128,27 @@ class NHSDataProcessor:
             relevant_data = chunk[mask].copy()
             
             if not relevant_data.empty:
+                # Add Category Column
+                relevant_data['category'] = relevant_data['BNF CODE'].apply(self.get_category)
+
                 # Collect unique drugs
-                for _, row in relevant_data[['BNF CODE', 'BNF NAME']].iterrows():
-                    unique_drugs.add((row['BNF CODE'], row['BNF NAME']))
+                for _, row in relevant_data[['BNF CODE', 'BNF NAME', 'category']].iterrows():
+                    bnf_name = str(row['BNF NAME'])
+                    if '_' in bnf_name:
+                        parts = bnf_name.split('_', 1)
+                        name = parts[0]
+                        presentation = parts[1]
+                    else:
+                        name = bnf_name
+                        presentation = ''
+                    unique_drugs.add((row['BNF CODE'], name, presentation, row['category']))
                 
                 # Select columns for DB
                 # Rename PRACTICE to PRACTICE_CODE if necessary
                 if 'PRACTICE' in relevant_data.columns:
                     relevant_data = relevant_data.rename(columns={'PRACTICE': 'PRACTICE_CODE'})
                 
-                slim_chunk = relevant_data[['PRACTICE_CODE', 'BNF CODE', 'ITEMS', 'ACT COST', 'QUANTITY']]
+                slim_chunk = relevant_data[['PRACTICE_CODE', 'BNF CODE', 'ITEMS', 'ACT COST', 'QUANTITY', 'category']]
                 filtered_chunks.append(slim_chunk)
                 
             processed_rows += len(chunk)
@@ -77,7 +165,7 @@ class NHSDataProcessor:
             print("Warning: No data matched your filter!")
 
         # Save Drugs Reference
-        drugs_df = pd.DataFrame(list(unique_drugs), columns=['bnf_code', 'drug_name'])
+        drugs_df = pd.DataFrame(list(unique_drugs), columns=['bnf_code', 'name', 'presentation', 'category'])
         drugs_df.to_csv(self.output_drugs, index=False)
         print(f"Saved {len(drugs_df)} unique drugs to {self.output_drugs}")
 
