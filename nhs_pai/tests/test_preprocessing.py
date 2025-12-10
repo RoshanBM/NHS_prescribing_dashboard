@@ -87,8 +87,12 @@ def test_process_filters_correctly(setup_data):
     df_presc = pd.read_csv(paths['out_presc'])
     assert len(df_presc) == 2
     assert '0501000B' not in df_presc['BNF CODE'].values # Ensure the '05' drug is gone
+    assert 'category' in df_presc.columns
+    assert df_presc.loc[df_presc['BNF CODE'] == '0401000A', 'category'].values[0] == 'Hypnotics & Anxiolytics'
 
     # 3. Check content of Drugs (Should have 2 unique drugs)
     df_drugs = pd.read_csv(paths['out_drugs'])
     assert len(df_drugs) == 2
     assert 'Mental Health Drug' in df_drugs['drug_name'].values
+    assert 'category' in df_drugs.columns
+    assert 'Hypnotics & Anxiolytics' in df_drugs['category'].values

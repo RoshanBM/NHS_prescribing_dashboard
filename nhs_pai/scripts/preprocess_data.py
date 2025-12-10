@@ -2,6 +2,20 @@ import pandas as pd
 import os
 
 class NHSDataProcessor:
+    BNF_CATEGORY_MAP = {
+        '0401': 'Hypnotics & Anxiolytics',
+        '0402': 'Psychosis & Related',
+        '0403': 'Antidepressants',
+        '0404': 'CNS Stimulants/ADHD',
+        '0405': 'Obesity',
+        '0406': 'Nausea & Vertigo',
+        '0407': 'Analgesics (Pain)',
+        '0408': 'Antiepileptics',
+        '0409': 'Parkinsonism',
+        '0410': 'Substance Dependence',
+        '0411': 'Dementia'
+    }
+
     def __init__(self, input_presc_file, input_addr_file, 
                  output_drugs, output_practices, output_prescriptions, 
                  target_chapter='04'):
@@ -14,6 +28,11 @@ class NHSDataProcessor:
         self.output_practices = output_practices
         self.output_presc = output_prescriptions
         self.target_chapter = target_chapter
+
+    def get_category(self, bnf_code):
+        """Map BNF code to category based on first 4 digits."""
+        code_prefix = str(bnf_code)[:4]
+        return self.BNF_CATEGORY_MAP.get(code_prefix, 'Other')
 
     def process(self):
         print("Step 1: Loading Practice Addresses...")
@@ -51,16 +70,19 @@ class NHSDataProcessor:
             relevant_data = chunk[mask].copy()
             
             if not relevant_data.empty:
+                # Add Category Column
+                relevant_data['category'] = relevant_data['BNF CODE'].apply(self.get_category)
+
                 # Collect unique drugs
-                for _, row in relevant_data[['BNF CODE', 'BNF NAME']].iterrows():
-                    unique_drugs.add((row['BNF CODE'], row['BNF NAME']))
+                for _, row in relevant_data[['BNF CODE', 'BNF NAME', 'category']].iterrows():
+                    unique_drugs.add((row['BNF CODE'], row['BNF NAME'], row['category']))
                 
                 # Select columns for DB
                 # Rename PRACTICE to PRACTICE_CODE if necessary
                 if 'PRACTICE' in relevant_data.columns:
                     relevant_data = relevant_data.rename(columns={'PRACTICE': 'PRACTICE_CODE'})
                 
-                slim_chunk = relevant_data[['PRACTICE_CODE', 'BNF CODE', 'ITEMS', 'ACT COST', 'QUANTITY']]
+                slim_chunk = relevant_data[['PRACTICE_CODE', 'BNF CODE', 'ITEMS', 'ACT COST', 'QUANTITY', 'category']]
                 filtered_chunks.append(slim_chunk)
                 
             processed_rows += len(chunk)
@@ -77,7 +99,7 @@ class NHSDataProcessor:
             print("Warning: No data matched your filter!")
 
         # Save Drugs Reference
-        drugs_df = pd.DataFrame(list(unique_drugs), columns=['bnf_code', 'drug_name'])
+        drugs_df = pd.DataFrame(list(unique_drugs), columns=['bnf_code', 'drug_name', 'category'])
         drugs_df.to_csv(self.output_drugs, index=False)
         print(f"Saved {len(drugs_df)} unique drugs to {self.output_drugs}")
 
