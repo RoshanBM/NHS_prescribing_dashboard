@@ -11,8 +11,19 @@ def get_joined_data():
     Prescriptions (Fact) -> Drugs (Dimension)
     """
 
+
     base_dir = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(base_dir, '../../data') # Assuming data is in nhs_pai/data
+    
+
+    # Define paths to your CSV files (Assumes they are in the 'data' folder relative to project root)
+    # Adjust this path if your files are stored elsewhere
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(base_dir, '../../data') # Assuming data is in nhs_pai/data
+    
+    # For this example, we assume files are in the current working directory or fixed path
+    # If running directly from src/, paths might need adjustment. 
+    # Here we try to find them dynamically or default to filename.
     
 
     try:
@@ -23,6 +34,7 @@ def get_joined_data():
 
         # 1. Join Prescriptions with Practices on PRACTICE_CODE
 
+
         merged_df = pd.merge(df_presc, df_prac, on='PRACTICE_CODE', how='inner')
 
         # 2. Join with Drugs on BNF CODE
@@ -30,6 +42,17 @@ def get_joined_data():
         merged_df = pd.merge(merged_df, df_drug, left_on='BNF CODE', right_on='bnf_code', how='inner')
 
         # 3. Select and Rename columns for the View
+
+
+        # SQL equivalent: JOIN practices ON prescriptions.PRACTICE_CODE = practices.PRACTICE_CODE
+        merged_df = pd.merge(df_presc, df_prac, on='PRACTICE_CODE', how='inner')
+
+        # 2. Join with Drugs on BNF CODE
+        # Note: Prescriptions has 'BNF CODE', Drugs has 'bnf_code'
+        merged_df = pd.merge(merged_df, df_drug, left_on='BNF CODE', right_on='bnf_code', how='inner')
+
+        # 3. Select and Rename columns for the View
+        # We only want relevant columns to display
 
         final_df = merged_df[[
             'PRACTICE_NAME', 
