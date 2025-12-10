@@ -78,11 +78,6 @@ class NHSDataProcessor:
             # Try exact match (e.g. 'CV')
             if prefix in self.POSTCODE_REGION_MAP:
                 return self.POSTCODE_REGION_MAP[prefix]
-            # Try first letter if 2-letter prefix not found (e.g. 'B' from 'B1')
-            # But wait, 'B' is in the map. 'CV' is in the map.
-            # If we have 'CV1', prefix is 'CV'. 'CV' is in map.
-            # If we have 'B1', prefix is 'B'. 'B' is in map.
-            # If we have 'XYZ', prefix is 'XYZ'. Not in map.
             return 'Other'
         return 'Unknown'
 
