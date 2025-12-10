@@ -24,9 +24,9 @@ def setup_data():
     pd.DataFrame({
         'PERIOD': [202409, 202409],
         'PRACTICE_CODE': ['P001', 'P002'],
-        'PRACTICE_NAME': ['Test Surgery A', 'Test Surgery B'],
+        'PRACTICE_NAME': ['TEST SURGERY A', 'Test Surgery B'],
         'ADDRESS1': ['1 Way', '2 Way'], 'ADDRESS2': ['', ''], 'ADDRESS3': ['', ''], 'ADDRESS4': ['', ''],
-        'POSTCODE': ['SW1 1AA', 'M1 2BB']
+        'POSTCODE': [' sw1 1aa ', 'm1 2bb']
     }).to_csv(input_addr, index=False, header=False) # NHS address file usually has no header
 
     # 2. Create a dummy Prescribing file
@@ -36,7 +36,7 @@ def setup_data():
     pd.DataFrame({
         'PRACTICE_CODE': ['P001', 'P001', 'P002'],
         'BNF CODE': ['0401000A', '0501000B', '0402000C'], # Note the codes
-        'BNF NAME': ['Mental Health Drug', 'Antibiotic', 'Anxiety Drug'],
+        'BNF NAME': ['Mental_Health Drug', 'Antibiotic_Tab', 'Anxiety_Drug'],
         'ITEMS': [10, 5, 20],
         'ACT COST': [50.0, 12.5, 100.0],
         'QUANTITY': [100, 50, 200]
@@ -93,6 +93,22 @@ def test_process_filters_correctly(setup_data):
     # 3. Check content of Drugs (Should have 2 unique drugs)
     df_drugs = pd.read_csv(paths['out_drugs'])
     assert len(df_drugs) == 2
-    assert 'Mental Health Drug' in df_drugs['drug_name'].values
+    assert 'name' in df_drugs.columns
+    assert 'presentation' in df_drugs.columns
+    assert 'Mental' in df_drugs['name'].values
+    assert 'Health Drug' in df_drugs['presentation'].values
     assert 'category' in df_drugs.columns
     assert 'Hypnotics & Anxiolytics' in df_drugs['category'].values
+
+    # 4. Check content of Practices (Title Case and Postcode Cleaning)
+    df_prac = pd.read_csv(paths['out_prac'])
+    assert 'Test Surgery A' in df_prac['PRACTICE_NAME'].values # Was 'TEST SURGERY A'
+    assert 'SW1 1AA' in df_prac['POSTCODE'].values # Was ' sw1 1aa '
+    assert 'M1 2BB' in df_prac['POSTCODE'].values # Was 'm1 2bb'
+    
+    # 5. Check Region Mapping
+    # SW1 1AA -> SW -> London (South West)
+    # M1 2BB -> M -> Manchester
+    assert 'region' in df_prac.columns
+    assert df_prac.loc[df_prac['POSTCODE'] == 'SW1 1AA', 'region'].values[0] == 'London (South West)'
+    assert df_prac.loc[df_prac['POSTCODE'] == 'M1 2BB', 'region'].values[0] == 'Manchester'
