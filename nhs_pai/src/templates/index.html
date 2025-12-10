@@ -16,6 +16,7 @@
                 <thead class="table-dark">
                     <tr>
                         <th>Practice Name</th>
+                        <th>Region</th>
                         <th>Drug Details</th>
                         <th>BNF Code</th>
                         <th>Items</th>
@@ -26,6 +27,7 @@
                     {% for row in prescriptions %}
                     <tr>
                         <td>{{ row.practice_name }}</td>
+                        <td>{{ row.region }}</td>
                         <td>
                             <strong>{{ row.drug_name }}</strong><br>
                             <small class="text-muted">{{ row.presentation }}</small>

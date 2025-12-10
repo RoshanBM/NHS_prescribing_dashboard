@@ -1,67 +1,88 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request  # Added 'request'
 import pandas as pd
 import os
 
 app = Flask(__name__)
 
-def get_joined_data():
+def get_joined_data(filters=None):
     """
-    Reads the 3 CSV files and performs a relational join:
-    Prescriptions (Fact) -> Practices (Dimension)
-    Prescriptions (Fact) -> Drugs (Dimension)
+    Reads CSVs, joins them, and applies filters if provided.
+    filters: dict of {column_name: value}
     """
-    # Define paths to your CSV files (Assumes they are in the 'data' folder relative to project root)
-    # Adjust this path if your files are stored elsewhere
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    data_dir = os.path.join(base_dir, '../../data') # Assuming data is in nhs_pai/data
-    
-    # For this example, we assume files are in the current working directory or fixed path
-    # If running directly from src/, paths might need adjustment. 
-    # Here we try to find them dynamically or default to filename.
+    # Go up two levels from src/app.py to reach nhs_pai/
+    # Then into data/processed
+    data_dir = os.path.join(base_dir, '../data/processed') 
     
     try:
-        # Load DataFrames
         df_presc = pd.read_csv(os.path.join(data_dir, 'clean_prescriptions.csv'))
+        # Drop category from prescriptions to avoid duplication during merge with drugs
+        if 'category' in df_presc.columns:
+            df_presc.drop(columns=['category'], inplace=True)
+            
         df_prac = pd.read_csv(os.path.join(data_dir, 'clean_practices.csv'))
         df_drug = pd.read_csv(os.path.join(data_dir, 'clean_drugs.csv'))
 
-        # 1. Join Prescriptions with Practices on PRACTICE_CODE
-        # SQL equivalent: JOIN practices ON prescriptions.PRACTICE_CODE = practices.PRACTICE_CODE
+        # 1. Join Prescriptions -> Practices (Keep 'region')
         merged_df = pd.merge(df_presc, df_prac, on='PRACTICE_CODE', how='inner')
 
-        # 2. Join with Drugs on BNF CODE
-        # Note: Prescriptions has 'BNF CODE', Drugs has 'bnf_code'
+        # 2. Join -> Drugs (Keep 'category')
         merged_df = pd.merge(merged_df, df_drug, left_on='BNF CODE', right_on='bnf_code', how='inner')
+        
+        # Drop redundant join key to avoid duplicate columns
+        if 'BNF CODE' in merged_df.columns:
+            merged_df.drop(columns=['BNF CODE'], inplace=True)
+        
+        # --- NEW: Renaming for consistency ---
+        # Rename columns to make filtering easier (matches your CSV headers to our logic)
+        merged_df.rename(columns={
+            'PRACTICE_NAME': 'practice_name',
+            'name': 'drug_name',
+            'region': 'region',
+            'category': 'category',
+            'ACT COST': 'cost',
+            'ITEMS': 'items',
+            'presentation': 'presentation',
+            'BNF CODE': 'bnf_code'
+        }, inplace=True)
 
-        # 3. Select and Rename columns for the View
-        # We only want relevant columns to display
+        # --- NEW: Apply Filters ---
+        if filters:
+            if filters.get('drug_name'):
+                # Case insensitive string match
+                merged_df = merged_df[merged_df['drug_name'].str.contains(filters['drug_name'], case=False, na=False)]
+            
+            if filters.get('practice_name'):
+                merged_df = merged_df[merged_df['practice_name'].str.contains(filters['practice_name'], case=False, na=False)]
+                
+            if filters.get('region'):
+                # Exact match for dropdowns usually, but partial here for flexibility
+                merged_df = merged_df[merged_df['region'].str.contains(filters['region'], case=False, na=False)]
+                
+            if filters.get('category'):
+                merged_df = merged_df[merged_df['category'].str.contains(filters['category'], case=False, na=False)]
 
-        final_df = merged_df[[
-            'PRACTICE_NAME', 
-            'name',           # From drugs table
-            'presentation',   # From drugs table
-            'ITEMS', 
-            'ACT COST',
-            'BNF CODE'
-        ]]
-
-        # Rename for cleaner template usage
-        final_df.columns = ['practice_name', 'drug_name', 'presentation', 'items', 'cost', 'bnf_code']
-
-        # Sort by Cost (descending) to make it interesting
-        final_df = final_df.sort_values(by='cost', ascending=False)
-
-        # Return top 50 rows to keep the page fast
-        return final_df.head(50).to_dict(orient='records')
+        # Select columns to display
+        final_df = merged_df[['practice_name', 'drug_name', 'presentation', 'items', 'cost', 'bnf_code', 'region', 'category']]
+        
+        return final_df.head(100).to_dict(orient='records') # Increased limit slightly
         
     except FileNotFoundError:
-        # Fallback for testing if files aren't in the exact path
-        print("CSV Files not found. Check paths.")
         return []
 
 @app.route('/')
 def index():
-    prescriptions = get_joined_data()
+    # 1. Get parameters from URL (e.g., /?drug_name=Diazepam)
+    filter_params = {
+        'drug_name': request.args.get('drug_name'),
+        'practice_name': request.args.get('doctor'), # User asked for 'doctor', we map to practice
+        'region': request.args.get('region'),
+        'category': request.args.get('category')
+    }
+    
+    # 2. Pass filters to data function
+    prescriptions = get_joined_data(filters=filter_params)
+    
     return render_template('index.html', prescriptions=prescriptions)
 
 if __name__ == '__main__':

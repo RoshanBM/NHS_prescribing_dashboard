@@ -16,7 +16,7 @@ from app import app
 @pytest.fixture
 def client():
     app.config['TESTING'] = True
-    # We set a custom config to tell the app where the CSVs are (optional, but good practice)
+   
     with app.test_client() as client:
         yield client
 
@@ -41,3 +41,24 @@ def test_homepage_displays_real_csv_data(client):
     # Note: This assumes 'clean_practices.csv' contains 'Chaudhury Surgery' as seen in the inspection.
     # If the specific row isn't guaranteed to be on page 1, we check for structure mainly.
     assert "table-striped" in page_content
+
+def test_search_filters(client):
+    """
+    GIVEN the app is running with data
+    WHEN we search for a specific Region and Category
+    THEN the page should only show results matching those criteria
+    """
+    # Simulate a user searching for "London" region and "Antiepileptics" category
+    response = client.get('/?region=Southend-on-Sea&category=Antiepileptics')
+    
+    assert response.status_code == 200
+    page_content = response.data.decode('utf-8')
+    
+    # ASSERTION 1: The correct data should appear
+
+    assert "Southend-on-Sea" in page_content
+    
+    # ASSERTION 2: The wrong data should NOT appear
+
+    assert "Chelmsford" not in page_content
+
