@@ -16,6 +16,10 @@ from app import app
 @pytest.fixture
 def client():
     app.config['TESTING'] = True
+<<<<<<< HEAD
+=======
+    # We set a custom config to tell the app where the CSVs are (optional, but good practice)
+>>>>>>> b74ac369ee912d97412f9428a017b1aaaa82173c
     with app.test_client() as client:
         yield client
 
@@ -37,4 +41,9 @@ def test_homepage_displays_real_csv_data(client):
     assert "Act Cost" in page_content
     
     # 3. Check for specific data we saw in your CSV (e.g., "Hypnotics" or specific practice)
+<<<<<<< HEAD
+=======
+    # Note: This assumes 'clean_practices.csv' contains 'Chaudhury Surgery' as seen in the inspection.
+    # If the specific row isn't guaranteed to be on page 1, we check for structure mainly.
+>>>>>>> b74ac369ee912d97412f9428a017b1aaaa82173c
     assert "table-striped" in page_content
