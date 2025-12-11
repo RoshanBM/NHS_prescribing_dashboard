@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import re
 from database_manager import DatabaseManager
-from analytics import calculate_filtered_average_cost
+from analytics import calculate_price_stats
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'  # Required for flash messages
@@ -155,8 +155,8 @@ def get_joined_data(filters=None, sort_by='price_per_unit', sort_dir='asc'):
         else:
             merged_df['is_cheapest'] = False
 
-        # Calculate Average Cost for filtered data
-        avg_cost = calculate_filtered_average_cost(merged_df)
+        # Calculate Stats
+        min_price, avg_cost, max_price, min_row, max_row = calculate_price_stats(merged_df)
 
         # Handle sort column mapping
         if sort_by == 'items':
@@ -174,10 +174,10 @@ def get_joined_data(filters=None, sort_by='price_per_unit', sort_dir='asc'):
         # Select columns to display
         final_df = merged_df[['practice_name', 'drug_name', 'presentation', 'total_items', 'cost', 'bnf_code', 'region', 'category', 'post_code', 'price_per_unit', 'is_cheapest']]
         
-        return final_df.head(100).to_dict(orient='records'), avg_cost # Increased limit slightly
+        return final_df.head(100).to_dict(orient='records'), min_price, avg_cost, max_price, min_row, max_row
         
     except FileNotFoundError:
-        return [], 0
+        return [], 0, 0, 0, {}, {}
 
 @app.route('/')
 def index():
@@ -193,9 +193,24 @@ def index():
     sort_by = request.args.get('sort', 'price_per_unit') # Default to price_per_unit
     sort_dir = request.args.get('direction', 'asc') # Default to asc
     # 2. Pass filters to data function
-    prescriptions, avg_cost = get_joined_data(filters=filter_params, sort_by=sort_by, sort_dir=sort_dir)
+    prescriptions, min_price, avg_cost, max_price, min_row, max_row = get_joined_data(filters=filter_params, sort_by=sort_by, sort_dir=sort_dir)
     
-    return render_template('index.html', prescriptions=prescriptions, current_sort=sort_by, current_dir=sort_dir, avg_cost=avg_cost)
+    # Determine labels for Min/Max boxes
+    min_label = ""
+    max_label = ""
+    
+    if filter_params.get('drug_name'):
+        # Filtered by Medicine -> Show Practice Name
+        min_label = min_row.get('practice_name', '')
+        max_label = max_row.get('practice_name', '')
+    elif filter_params.get('category'):
+        # Filtered by Category -> Show Medicine Name
+        min_label = min_row.get('drug_name', '')
+        max_label = max_row.get('drug_name', '')
+    
+    return render_template('index.html', prescriptions=prescriptions, current_sort=sort_by, current_dir=sort_dir, 
+                           min_price=min_price, avg_cost=avg_cost, max_price=max_price,
+                           min_label=min_label, max_label=max_label)
 
 # --- Edit Database Routes ---
 

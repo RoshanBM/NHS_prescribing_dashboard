@@ -49,3 +49,33 @@ def calculate_filtered_average_cost(df):
         return 0
         
     return total_cost / total_items
+
+def calculate_price_stats(df):
+    """
+    Calculates Min, Average, and Max Price Per Unit.
+    Returns tuple: (min_price, avg_cost, max_price, min_row, max_row)
+    """
+    if df.empty:
+        return 0, 0, 0, {}, {}
+        
+    # Calculate Average (Weighted)
+    avg_cost = calculate_filtered_average_cost(df)
+    
+    # Calculate Min/Max based on 'price_per_unit' column
+    # Ensure column exists (it should be calculated in app.py)
+    if 'price_per_unit' in df.columns:
+        min_idx = df['price_per_unit'].idxmin()
+        max_idx = df['price_per_unit'].idxmax()
+        
+        min_price = df.loc[min_idx, 'price_per_unit']
+        max_price = df.loc[max_idx, 'price_per_unit']
+        
+        min_row = df.loc[min_idx].to_dict()
+        max_row = df.loc[max_idx].to_dict()
+    else:
+        min_price = 0
+        max_price = 0
+        min_row = {}
+        max_row = {}
+        
+    return min_price, avg_cost, max_price, min_row, max_row

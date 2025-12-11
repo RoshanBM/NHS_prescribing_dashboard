@@ -50,11 +50,33 @@
 
     {% if request.args.get('drug_name') or request.args.get('category') %}
     <div class="row justify-content-center mb-4">
-        <div class="col-md-4">
+        <div class="col-md-3">
+            <div class="card text-center bg-success text-white">
+                <div class="card-body py-2">
+                    <h5 class="card-title mb-0">Lowest Price / Item</h5>
+                    <p class="card-text fs-4 fw-bold">£{{ "%.2f"|format(min_price) }}</p>
+                    {% if min_label %}
+                    <p class="card-text small">{{ min_label }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
             <div class="card text-center bg-info text-white">
                 <div class="card-body py-2">
-                    <h5 class="card-title mb-0">Average Cost Per Item</h5>
+                    <h5 class="card-title mb-0">Average Cost / Item</h5>
                     <p class="card-text fs-4 fw-bold">£{{ "%.2f"|format(avg_cost) }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-danger text-white">
+                <div class="card-body py-2">
+                    <h5 class="card-title mb-0">Highest Price / Item</h5>
+                    <p class="card-text fs-4 fw-bold">£{{ "%.2f"|format(max_price) }}</p>
+                    {% if max_label %}
+                    <p class="card-text small">{{ max_label }}</p>
+                    {% endif %}
                 </div>
             </div>
         </div>
