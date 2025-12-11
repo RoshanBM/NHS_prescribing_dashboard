@@ -82,3 +82,19 @@ def test_postcode_filter(client):
     assert "CM12 0UA" not in page_content
     assert "Queens Park Surgery" not in page_content
 
+def test_postcode_filter_no_spaces(client):
+    """
+    GIVEN the app is running with data
+    WHEN we search for a postcode without spaces (e.g. 'sk91pa')
+    THEN the page should still find the results for 'SK9 1PA'
+    """
+    # Search for 'sk91pa' (lowercase, no space)
+    response = client.get('/?post_code=sk91pa')
+    
+    assert response.status_code == 200
+    page_content = response.data.decode('utf-8')
+    
+    # Should find 'SK9 1PA' in the output table
+    assert "SK9 1PA" in page_content
+    assert "Kenmore Medical Centre" in page_content
+

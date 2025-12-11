@@ -64,7 +64,10 @@ def get_joined_data(filters=None):
                 merged_df = merged_df[merged_df['category'].str.contains(filters['category'], case=False, na=False)]
 
             if filters.get('post_code'):
-                merged_df = merged_df[merged_df['post_code'].str.contains(filters['post_code'], case=False, na=False)]
+                # Normalize search term: remove spaces
+                search_pc = filters['post_code'].replace(" ", "")
+                # Normalize column: remove spaces, then check contains
+                merged_df = merged_df[merged_df['post_code'].str.replace(" ", "").str.contains(search_pc, case=False, na=False)]
 
         # Select columns to display
         final_df = merged_df[['practice_name', 'drug_name', 'presentation', 'total_items', 'cost', 'bnf_code', 'region', 'category', 'post_code']]
