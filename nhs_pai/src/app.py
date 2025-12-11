@@ -4,7 +4,7 @@ import os
 
 app = Flask(__name__)
 
-def get_joined_data(filters=None):
+def get_joined_data(filters=None, sort_by='cost', sort_dir='desc'):
     """
     Reads CSVs, joins them, and applies filters if provided.
     filters: dict of {column_name: value}
@@ -51,7 +51,7 @@ def get_joined_data(filters=None):
             lambda row: row['cost'] / row['total_items'] if row['total_items'] > 0 else 0, 
             axis=1
         )
-        # --- NEW: Apply Filters ---
+        
         if filters:
             if filters.get('drug_name'):
                 # Case insensitive string match
@@ -72,7 +72,20 @@ def get_joined_data(filters=None):
                 search_pc = filters['post_code'].replace(" ", "")
                 # Normalize column: remove spaces, then check contains
                 merged_df = merged_df[merged_df['post_code'].str.replace(" ", "").str.contains(search_pc, case=False, na=False)]
+        
+        # Handle sort column mapping
+        if sort_by == 'items':
+            sort_by = 'total_items'
 
+        valid_sort_cols = ['total_items', 'cost', 'price_per_unit', 'practice_name', 'drug_name']
+        
+        if sort_by not in valid_sort_cols:
+            sort_by = 'cost' # Default fallback
+
+        ascending = True if sort_dir == 'asc' else False
+        
+        # Apply Pandas Sort
+        merged_df = merged_df.sort_values(by=sort_by, ascending=ascending)
         # Select columns to display
         final_df = merged_df[['practice_name', 'drug_name', 'presentation', 'total_items', 'cost', 'bnf_code', 'region', 'category', 'post_code', 'price_per_unit']]
         
@@ -92,10 +105,12 @@ def index():
         'post_code': request.args.get('post_code')
     }
     
+    sort_by = request.args.get('sort', 'cost') # Default to cost
+    sort_dir = request.args.get('direction', 'desc') # Default to desc
     # 2. Pass filters to data function
-    prescriptions = get_joined_data(filters=filter_params)
+    prescriptions = get_joined_data(filters=filter_params, sort_by=sort_by, sort_dir=sort_dir)
     
-    return render_template('index.html', prescriptions=prescriptions)
+    return render_template('index.html', prescriptions=prescriptions, current_sort=sort_by, current_dir=sort_dir)
 
 if __name__ == '__main__':
     app.run(debug=True)

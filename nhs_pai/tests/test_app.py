@@ -134,7 +134,7 @@ def test_sorting_functionality(client):
     # Test Sorting by Items Descending
     data_desc = get_joined_data(sort_by='items', sort_dir='desc')
     if len(data_desc) >= 2:
-        assert data_desc[0]['items'] >= data_desc[1]['items']
+        assert data_desc[0]['total_items'] >= data_desc[1]['total_items']
         
     # Test Sorting by Cost Ascending (Cheapest first)
     data_asc = get_joined_data(sort_by='cost', sort_dir='asc')
