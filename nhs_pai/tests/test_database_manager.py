@@ -56,3 +56,38 @@ def test_insert_practice(db_manager):
     assert result is not None
     assert result[0] == 'Test Surgery'
     conn.close()
+
+def test_crud_practice(db_manager):
+    """
+    Test the full lifecycle of a Practice record:
+    1. CREATE a new practice
+    2. READ it back to verify
+    3. UPDATE its name
+    4. DELETE it
+    """
+    
+    # 1. CREATE
+    practice_code = "TEST001"
+    initial_name = "Test Surgery"
+    postcode = "SW1A 1AA"
+    
+    db_manager.add_practice(practice_code, initial_name, postcode)
+    
+    # 2. READ
+    result = db_manager.get_practice(practice_code)
+    assert result is not None
+    assert result['practice_name'] == initial_name
+    assert result['postcode'] == postcode
+    
+    # 3. UPDATE
+    new_name = "Updated Health Centre"
+    db_manager.update_practice(practice_code, new_name)
+    
+    updated_result = db_manager.get_practice(practice_code)
+    assert updated_result['practice_name'] == new_name
+    
+    # 4. DELETE
+    db_manager.delete_practice(practice_code)
+    
+    final_result = db_manager.get_practice(practice_code)
+    assert final_result is None
