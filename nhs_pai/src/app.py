@@ -43,7 +43,8 @@ def get_joined_data(filters=None):
             'ACT COST': 'cost',
             'ITEMS': 'items',
             'presentation': 'presentation',
-            'BNF CODE': 'bnf_code'
+            'BNF CODE': 'bnf_code',
+            'POSTCODE': 'post_code'
         }, inplace=True)
 
         # --- NEW: Apply Filters ---
@@ -62,8 +63,11 @@ def get_joined_data(filters=None):
             if filters.get('category'):
                 merged_df = merged_df[merged_df['category'].str.contains(filters['category'], case=False, na=False)]
 
+            if filters.get('post_code'):
+                merged_df = merged_df[merged_df['post_code'].str.contains(filters['post_code'], case=False, na=False)]
+
         # Select columns to display
-        final_df = merged_df[['practice_name', 'drug_name', 'presentation', 'items', 'cost', 'bnf_code', 'region', 'category']]
+        final_df = merged_df[['practice_name', 'drug_name', 'presentation', 'items', 'cost', 'bnf_code', 'region', 'category', 'post_code']]
         
         return final_df.head(100).to_dict(orient='records') # Increased limit slightly
         
@@ -77,7 +81,8 @@ def index():
         'drug_name': request.args.get('drug_name'),
         'practice_name': request.args.get('doctor'), # User asked for 'doctor', we map to practice
         'region': request.args.get('region'),
-        'category': request.args.get('category')
+        'category': request.args.get('category'),
+        'post_code': request.args.get('post_code')
     }
     
     # 2. Pass filters to data function

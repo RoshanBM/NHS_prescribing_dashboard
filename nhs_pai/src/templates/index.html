@@ -15,23 +15,27 @@
     <div class="card p-3 mb-4 bg-light">
         <form method="GET" action="/">
             <div class="row g-3">
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label">Medicine Name</label>
-                    <input type="text" name="drug_name" class="form-control" placeholder="e.g. Diazepam">
+                    <input type="text" name="drug_name" class="form-control" placeholder="e.g. Diazepam" value="{{ request.args.get('drug_name', '') }}">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label">Doctor / Practice</label>
-                    <input type="text" name="doctor" class="form-control" placeholder="e.g. Health Centre">
+                    <input type="text" name="doctor" class="form-control" placeholder="e.g. Health Centre" value="{{ request.args.get('doctor', '') }}">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label">Region</label>
-                    <input type="text" name="region" class="form-control" placeholder="e.g. London">
+                    <input type="text" name="region" class="form-control" placeholder="e.g. London" value="{{ request.args.get('region', '') }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Post Code</label>
+                    <input type="text" name="post_code" class="form-control" placeholder="e.g. SW1A" value="{{ request.args.get('post_code', '') }}">
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">Category</label>
-                    <input type="text" name="category" class="form-control" placeholder="e.g. Hypnotics">
+                    <input type="text" name="category" class="form-control" placeholder="e.g. Hypnotics" value="{{ request.args.get('category', '') }}">
                 </div>
-                <div class="col-md-1 d-flex align-items-end">
+                <div class="col-md-2 d-flex align-items-end">
                     <button type="submit" class="btn btn-primary w-100">Filter</button>
                 </div>
             </div>
@@ -48,6 +52,7 @@
                     <tr>
                         <th>Region</th>
                         <th>Practice Name</th>
+                        <th>Post Code</th>
                         <th>Category</th>
                         <th>Drug Details</th>
                         <th>Items</th>
@@ -59,6 +64,7 @@
                     <tr>
                         <td><span class="badge bg-secondary">{{ row.region }}</span></td>
                         <td>{{ row.practice_name }}</td>
+                        <td>{{ row.post_code }}</td>
                         <td><small>{{ row.category }}</small></td>
                         <td>
                             <strong>{{ row.drug_name }}</strong><br>
@@ -69,7 +75,7 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="6" class="text-center py-4">
+                        <td colspan="7" class="text-center py-4">
                             <span class="text-muted">No results found matching your filters.</span>
                         </td>
                     </tr>

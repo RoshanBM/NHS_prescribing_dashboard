@@ -35,7 +35,7 @@ def test_homepage_displays_real_csv_data(client):
     
     # 2. Check for Table Headers from your specific columns
     assert "Practice Name" in page_content
-    assert "Act Cost" in page_content
+    assert "Cost (£)" in page_content
     
     # 3. Check for specific data we saw in your CSV (e.g., "Hypnotics" or specific practice)
     # Note: This assumes 'clean_practices.csv' contains 'Chaudhury Surgery' as seen in the inspection.
@@ -61,4 +61,24 @@ def test_search_filters(client):
     # ASSERTION 2: The wrong data should NOT appear
 
     assert "Chelmsford" not in page_content
+
+def test_postcode_filter(client):
+    """
+    GIVEN the app is running with data
+    WHEN we search for a specific Post Code
+    THEN the page should only show results matching that Post Code
+    """
+    # Use a postcode from clean_practices.csv that has prescriptions: SK9 1PA (Kenmore Medical Centre)
+    response = client.get('/?post_code=SK9 1PA')
+    
+    assert response.status_code == 200
+    page_content = response.data.decode('utf-8')
+    
+    assert "SK9 1PA" in page_content
+    assert "Kenmore Medical Centre" in page_content
+    
+    # Check that another postcode/practice is not present
+    # CM12 0UA (Queens Park Surgery)
+    assert "CM12 0UA" not in page_content
+    assert "Queens Park Surgery" not in page_content
 
