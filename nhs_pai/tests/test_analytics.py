@@ -5,15 +5,10 @@ import os
 # Ensure 'src' is findable
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
-from app import get_category_costs
+from analytics import get_category_costs
 
 def test_get_average_cost_per_item_by_category():
-    """
-    GIVEN the CSV data
-    WHEN we request category cost statistics
-    THEN we should get a dictionary where keys are categories and values are floats
-    AND the math should be (Total Cost / Total Items) for that category
-    """
+ 
     # 1. Run the function
     stats = get_category_costs()
     
