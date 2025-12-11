@@ -68,3 +68,34 @@ def test_generate_plotly_data_for_region_costs(mock_read_csv):
     
    
     assert graph_data['y'][0] >= graph_data['y'][-1]
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+
+from app import get_drug_regional_ppu
+
+def test_generate_graph_data_for_drug_ppu():
+    """
+    GIVEN the NHS dataset
+    WHEN we ask for the regional price variance of a specific drug ('Alzain')
+    THEN it should return Plotly-formatted data
+    AND the Y-axis should be Price Per Unit (Cost / Items)
+    """
+    # 1. Execute Function with a known drug name from your CSV
+    target_drug = "Alzain" 
+    graph_data = get_drug_regional_ppu(target_drug)
+    
+    # 2. Check Structure
+    assert isinstance(graph_data, dict)
+    assert graph_data['type'] == 'bar'
+    
+    # 3. Check Data Quality
+    # We expect multiple regions to use this drug
+    assert len(graph_data['x']) > 0 
+    assert len(graph_data['y']) == len(graph_data['x'])
+    
+    # 4. Check Math Logic
+    # Price per unit should be a reasonable float (e.g., £5.20)
+    # It should NOT be the total cost (which would be huge)
+    first_price = graph_data['y'][0]
+    assert isinstance(first_price, float)
+    assert first_price > 0
