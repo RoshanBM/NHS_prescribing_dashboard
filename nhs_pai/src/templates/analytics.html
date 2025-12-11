@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NHS Prescription Analytics</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">NHS Prescription Dashboard</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/analytics">Analytics</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/edit_database">Edit Database</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2 class="mb-4 text-center">Regional Price Analytics</h2>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <ul class="nav nav-pills nav-fill mb-3" id="pills-tab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if not selected_category %}active{% endif %}" id="pills-drug-tab" data-bs-toggle="pill" data-bs-target="#pills-drug" type="button" role="tab">By Medicine</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if selected_category %}active{% endif %}" id="pills-category-tab" data-bs-toggle="pill" data-bs-target="#pills-category" type="button" role="tab">By Category</button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="pills-tabContent">
+                    <!-- Filter by Drug -->
+                    <div class="tab-pane fade {% if not selected_category %}show active{% endif %}" id="pills-drug" role="tabpanel">
+                        <form action="/analytics" method="get" class="row g-3 justify-content-center">
+                            <div class="col-md-6">
+                                <label class="form-label">Select Medicine</label>
+                                <input class="form-control" list="datalistOptions" name="drug_name" placeholder="Type to search..." value="{{ selected_drug if selected_drug else '' }}">
+                                <datalist id="datalistOptions">
+                                    {% for drug in drugs %}
+                                    <option value="{{ drug }}">
+                                    {% endfor %}
+                                </datalist>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary w-100">Analyze</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Filter by Category -->
+                    <div class="tab-pane fade {% if selected_category %}show active{% endif %}" id="pills-category" role="tabpanel">
+                        <form action="/analytics" method="get" class="row g-3 justify-content-center">
+                            <div class="col-md-6">
+                                <label class="form-label">Select Category</label>
+                                <select class="form-select" name="category">
+                                    <option value="" selected disabled>Choose...</option>
+                                    {% for cat in categories %}
+                                    <option value="{{ cat }}" {% if selected_category == cat %}selected{% endif %}>{{ cat }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary w-100">Analyze</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if graph_data %}
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div id="chart"></div>
+            </div>
+        </div>
+        <script>
+            var graphData = {{ graph_data | tojson | safe }};
+            if (graphData) {
+                var data = [{
+                    x: graphData.x,
+                    y: graphData.y,
+                    type: graphData.type,
+                    marker: graphData.marker,
+                    text: graphData.text,
+                    hoverinfo: graphData.hoverinfo
+                }];
+
+                var layout = {
+                    title: 'Average Price Per Item by Region',
+                    xaxis: { title: 'Region', tickangle: -45 },
+                    yaxis: { title: 'Price (£)' },
+                    margin: { b: 100 }
+                };
+
+                Plotly.newPlot('chart', data, layout);
+            }
+        </script>
+        {% elif selected_drug or selected_category %}
+        <div class="alert alert-warning text-center">
+            No data found for the selected filter.
+        </div>
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

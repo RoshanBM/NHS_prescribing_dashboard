@@ -393,23 +393,63 @@ def delete_prescription(id):
     flash('Prescription deleted successfully!', 'success')
     return redirect(url_for('edit_database'))
 
-if __name__ == '__main__':
-    app.run(debug=True)
+@app.route('/analytics')
+def analytics():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(base_dir, '../data/processed')
+    
+    # Get lists for dropdowns
+    try:
+        df_drug = pd.read_csv(os.path.join(data_dir, 'clean_drugs.csv'))
+        drugs = sorted(df_drug['name'].unique().tolist())
+        # Assuming 'category' is in clean_drugs.csv or we need to join. 
+        # Based on previous code, 'category' is in clean_drugs.csv (merged_df logic).
+        # Let's check if 'category' column exists in df_drug
+        if 'category' in df_drug.columns:
+            categories = sorted(df_drug['category'].dropna().unique().tolist())
+        else:
+            # Fallback if category isn't in drugs directly (though it should be based on previous merges)
+            categories = []
+    except Exception:
+        drugs = []
+        categories = []
+
+    selected_drug = request.args.get('drug_name')
+    selected_category = request.args.get('category')
+    
+    graph_data = None
+    
+    if selected_drug:
+        graph_data = get_drug_regional_ppu(selected_drug)
+    elif selected_category:
+        graph_data = get_regional_cost_graph(selected_category)
+        
+    return render_template('analytics.html', drugs=drugs, categories=categories, 
+                           selected_drug=selected_drug, selected_category=selected_category,
+                           graph_data=graph_data)
 
 def get_regional_cost_graph(category_name):
-
+    """
+    Generates data for a Plotly Bar Chart.
+    X = Region
+    Y = Average Cost Per Item (Sum Cost / Sum Items)
+    Filtered by the specific category provided.
+    """
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    data_dir = os.path.join(base_dir, '../../data')
+    # Fix path: src/app.py -> ../data/processed
+    data_dir = os.path.join(base_dir, '../data/processed')
     
     try:
         # Load Data
         df_presc = pd.read_csv(os.path.join(data_dir, 'clean_prescriptions.csv'))
+        # Drop category from prescriptions to avoid duplication during merge with drugs
+        if 'category' in df_presc.columns:
+            df_presc.drop(columns=['category'], inplace=True)
+
         df_prac = pd.read_csv(os.path.join(data_dir, 'clean_practices.csv'))
         df_drug = pd.read_csv(os.path.join(data_dir, 'clean_drugs.csv'))
 
         # 1. Join Prescriptions -> Drugs (to filter by Category first, for speed)
-        # Note: Merging everything first is easier to code, filtering early is faster.
-        # Let's merge fully for safety.
         merged = pd.merge(df_presc, df_prac, on='PRACTICE_CODE', how='inner')
         merged = pd.merge(merged, df_drug, left_on='BNF CODE', right_on='bnf_code', how='inner')
 
@@ -417,39 +457,67 @@ def get_regional_cost_graph(category_name):
         filtered_df = merged[merged['category'] == category_name]
         
         if filtered_df.empty:
-            return {'x': [], 'y': [], 'type': 'bar'}
+            return None
 
         # 3. Group by Region
-        grouped = filtered_df.groupby('region')[['ACT COST', 'ITEMS']].sum()
+        # We need: Sum Cost, Sum Items, Count Unique Practices
+        grouped = filtered_df.groupby('region').agg({
+            'ACT COST': 'sum',
+            'ITEMS': 'sum',
+            'PRACTICE_CODE': 'nunique'
+        })
 
         # 4. Calculate Average Price Per Item
-        # Avoid division by zero
         grouped = grouped[grouped['ITEMS'] > 0]
         grouped['avg_cost'] = grouped['ACT COST'] / grouped['ITEMS']
 
         # 5. Sort Descending (Highest cost first)
         grouped = grouped.sort_values(by='avg_cost', ascending=False)
+        
+        # 6. Determine Colors
+        # Default Blue
+        colors = ['#1f77b4'] * len(grouped)
+        if len(grouped) > 0:
+            # Max (First item because we sorted desc) -> Red
+            colors[0] = '#dc3545' 
+            # Min (Last item) -> Green
+            colors[-1] = '#198754'
 
-        # 6. Format for Plotly
+        # 7. Format Hover Text
+        regions = grouped.index.tolist()
+        costs = grouped['avg_cost'].tolist()
+        items = grouped['ITEMS'].tolist()
+        practices = grouped['PRACTICE_CODE'].tolist()
+        
+        hover_texts = []
+        for r, c, i, p in zip(regions, costs, items, practices):
+            hover_texts.append(f"Region: {r}<br>Avg Cost: £{c:.2f}<br>Total Items: {i}<br>Practices: {p}")
+
+        # 8. Format for Plotly
         return {
-            'x': grouped.index.tolist(),         # The Regions
-            'y': grouped['avg_cost'].tolist(),   # The Costs
+            'x': regions,
+            'y': costs,
             'type': 'bar',
-            'marker': {'color': '#1f77b4'}       # Optional styling
+            'marker': {'color': colors},
+            'text': hover_texts,
+            'hoverinfo': 'text'
         }
 
     except FileNotFoundError:
-        return {'x': [], 'y': [], 'type': 'bar'}
+        return None
 
 
 def get_drug_regional_ppu(drug_name):
-
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    data_dir = os.path.join(base_dir, '../../data')
+    data_dir = os.path.join(base_dir, '../data/processed')
     
     try:
         # Load Data
         df_presc = pd.read_csv(os.path.join(data_dir, 'clean_prescriptions.csv'))
+        # Drop category from prescriptions to avoid duplication during merge with drugs
+        if 'category' in df_presc.columns:
+            df_presc.drop(columns=['category'], inplace=True)
+
         df_prac = pd.read_csv(os.path.join(data_dir, 'clean_practices.csv'))
         df_drug = pd.read_csv(os.path.join(data_dir, 'clean_drugs.csv'))
 
@@ -457,30 +525,54 @@ def get_drug_regional_ppu(drug_name):
         merged = pd.merge(df_presc, df_prac, on='PRACTICE_CODE', how='inner')
         merged = pd.merge(merged, df_drug, left_on='BNF CODE', right_on='bnf_code', how='inner')
 
-        # 2. Filter by Exact Drug Name (Case insensitive for safety)
-        # Using 'name' column from clean_drugs.csv
+        # 2. Filter by Exact Drug Name (Case insensitive)
         filtered_df = merged[merged['name'].str.lower() == drug_name.lower()]
         
         if filtered_df.empty:
-            return {'x': [], 'y': [], 'type': 'bar'}
+            return None
 
         # 3. Group by Region
-        grouped = filtered_df.groupby('region')[['ACT COST', 'ITEMS']].sum()
+        grouped = filtered_df.groupby('region').agg({
+            'ACT COST': 'sum',
+            'ITEMS': 'sum',
+            'PRACTICE_CODE': 'nunique'
+        })
 
-        # 4. Calculate Price Per Unit (Weighted Average)
+        # 4. Calculate Price Per Unit
         grouped = grouped[grouped['ITEMS'] > 0]
         grouped['ppu'] = grouped['ACT COST'] / grouped['ITEMS']
 
         # 5. Sort Descending (Most expensive region first)
         grouped = grouped.sort_values(by='ppu', ascending=False)
 
-        # 6. Format for Plotly
+        # 6. Determine Colors
+        colors = ['#1f77b4'] * len(grouped)
+        if len(grouped) > 0:
+            colors[0] = '#dc3545' # Max -> Red
+            colors[-1] = '#198754' # Min -> Green
+
+        # 7. Format Hover Text
+        regions = grouped.index.tolist()
+        ppus = grouped['ppu'].tolist()
+        items = grouped['ITEMS'].tolist()
+        practices = grouped['PRACTICE_CODE'].tolist()
+        
+        hover_texts = []
+        for r, p, i, prac in zip(regions, ppus, items, practices):
+            hover_texts.append(f"Region: {r}<br>Price/Item: £{p:.2f}<br>Total Items: {i}<br>Practices: {prac}")
+
+        # 8. Format for Plotly
         return {
-            'x': grouped.index.tolist(),         # Regions
-            'y': grouped['ppu'].tolist(),        # Price Per Unit
+            'x': regions,
+            'y': ppus,
             'type': 'bar',
-            'marker': {'color': '#dc3545'}       # Red color for "Price Alert"
+            'marker': {'color': colors},
+            'text': hover_texts,
+            'hoverinfo': 'text'
         }
 
     except FileNotFoundError:
-        return {'x': [], 'y': [], 'type': 'bar'}
+        return None
+
+if __name__ == '__main__':
+    app.run(debug=True)
