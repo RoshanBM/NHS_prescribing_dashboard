@@ -47,6 +47,7 @@ def get_joined_data(filters=None):
             'POSTCODE': 'post_code'
         }, inplace=True)
 
+        merged_df['price_per_unit'] = merged_df['cost'] / merged_df['total_items']
         # --- NEW: Apply Filters ---
         if filters:
             if filters.get('drug_name'):
@@ -70,7 +71,7 @@ def get_joined_data(filters=None):
                 merged_df = merged_df[merged_df['post_code'].str.replace(" ", "").str.contains(search_pc, case=False, na=False)]
 
         # Select columns to display
-        final_df = merged_df[['practice_name', 'drug_name', 'presentation', 'total_items', 'cost', 'bnf_code', 'region', 'category', 'post_code']]
+        final_df = merged_df[['practice_name', 'drug_name', 'presentation', 'total_items', 'cost', 'bnf_code', 'region', 'category', 'post_code', 'price_per_unit']]
         
         return final_df.head(100).to_dict(orient='records') # Increased limit slightly
         

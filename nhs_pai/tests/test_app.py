@@ -117,6 +117,7 @@ def test_price_per_unit_calculation(client):
         assert 'price_per_unit' in record
         
         # Check the math: Cost divided by Items
-        expected_ppu = record['cost'] / record['items']
+        expected_ppu = record['cost'] / record['total_items']
+        assert record['price_per_unit'] == expected_ppu
         assert record['price_per_unit'] == pytest.approx(expected_ppu, 0.01)
 
