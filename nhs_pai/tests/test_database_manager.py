@@ -1,6 +1,11 @@
 import pytest
 import sqlite3
 import os
+import sys
+
+# Add parent directory to path to allow imports from src
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from src.database_manager import DatabaseManager
 
 TEST_DB_NAME = 'test_nhs.db'

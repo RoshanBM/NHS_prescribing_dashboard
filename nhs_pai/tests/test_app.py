@@ -98,3 +98,25 @@ def test_postcode_filter_no_spaces(client):
     assert "SK9 1PA" in page_content
     assert "Kenmore Medical Centre" in page_content
 
+def test_price_per_unit_calculation(client):
+
+    response = client.get('/')
+    assert response.status_code == 200
+    
+ 
+    from app import get_joined_data
+    
+    # Fetch data (mocking filters as None)
+    data = get_joined_data()
+    
+    # 3. Check the first record (assuming data exists)
+    if data:
+        record = data[0]
+        
+        # FAIL POINT: This key 'price_per_unit' does not exist yet
+        assert 'price_per_unit' in record
+        
+        # Check the math: Cost divided by Items
+        expected_ppu = record['cost'] / record['items']
+        assert record['price_per_unit'] == pytest.approx(expected_ppu, 0.01)
+

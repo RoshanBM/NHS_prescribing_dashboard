@@ -2,6 +2,11 @@ import pytest
 import pandas as pd
 import os
 import shutil
+import sys
+
+# Add parent directory to path to allow imports from scripts
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from scripts.preprocess_data import NHSDataProcessor
 
 @pytest.fixture
