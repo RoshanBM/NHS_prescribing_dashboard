@@ -55,9 +55,30 @@
                         <th>Post Code</th>
                         <th>Category</th>
                         <th>Drug Details</th>
-                        <th>Price / Unit</th>
-                        <th>Items</th>
-                        <th class="text-end">Cost (£)</th>
+                        <th>
+                            <a href="{{ sort_url('price_per_unit') }}" class="text-white text-decoration-none">
+                                Price / Unit
+                                {% if current_sort == 'price_per_unit' %}
+                                    {{ '▲' if current_dir == 'asc' else '▼' }}
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ sort_url('items') }}" class="text-white text-decoration-none">
+                                Items
+                                {% if current_sort == 'items' %}
+                                    {{ '▲' if current_dir == 'asc' else '▼' }}
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="text-end">
+                            <a href="{{ sort_url('cost') }}" class="text-white text-decoration-none">
+                                Cost (£)
+                                {% if current_sort == 'cost' %}
+                                    {{ '▲' if current_dir == 'asc' else '▼' }}
+                                {% endif %}
+                            </a>
+                        </th>
                     </tr>
                 </thead>
                 <tbody>

@@ -1,10 +1,25 @@
-from flask import Flask, render_template, request  # Added 'request'
+from flask import Flask, render_template, request, url_for  # Added 'request', 'url_for'
 import pandas as pd
 import os
 
 app = Flask(__name__)
 
-def get_joined_data(filters=None, sort_by='cost', sort_dir='desc'):
+@app.context_processor
+def utility_processor():
+    def sort_url(sort_by):
+        args = request.args.copy()
+        args['sort'] = sort_by
+        current_sort = request.args.get('sort', 'cost')
+        current_dir = request.args.get('direction', 'asc')
+        
+        if sort_by == current_sort and current_dir == 'asc':
+            args['direction'] = 'desc'
+        else:
+            args['direction'] = 'asc'
+        return url_for('index', **args)
+    return dict(sort_url=sort_url)
+
+def get_joined_data(filters=None, sort_by='cost', sort_dir='asc'):
     """
     Reads CSVs, joins them, and applies filters if provided.
     filters: dict of {column_name: value}
@@ -99,14 +114,14 @@ def index():
     # 1. Get parameters from URL (e.g., /?drug_name=Diazepam)
     filter_params = {
         'drug_name': request.args.get('drug_name'),
-        'practice_name': request.args.get('doctor'), # User asked for 'doctor', we map to practice
+        'practice_name': request.args.get('doctor'), 
         'region': request.args.get('region'),
         'category': request.args.get('category'),
         'post_code': request.args.get('post_code')
     }
     
     sort_by = request.args.get('sort', 'cost') # Default to cost
-    sort_dir = request.args.get('direction', 'desc') # Default to desc
+    sort_dir = request.args.get('direction', 'asc') # Default to asc
     # 2. Pass filters to data function
     prescriptions = get_joined_data(filters=filter_params, sort_by=sort_by, sort_dir=sort_dir)
     
