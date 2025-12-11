@@ -71,34 +71,32 @@ class DatabaseManager:
         self.conn.commit()
 
     def add_practice(self, code, name, postcode):
-        if not self.conn:
-            return
-        cursor = self.conn.cursor()
-        sql = "INSERT INTO practices (practice_code, practice_name, postcode) VALUES (?, ?, ?)"
-        cursor.execute(sql, (code, name, postcode))
-        self.conn.commit()
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(
+                "INSERT INTO practices (practice_code, practice_name, postcode) VALUES (?, ?, ?)", 
+                (code, name, postcode)
+            )
+            self.conn.commit()
+            return True
+        except sqlite3.IntegrityError:
+            print(f"Error: Practice {code} already exists.")
+            return False
 
     def get_practice(self, code):
-        if not self.conn:
-            return None
         cursor = self.conn.cursor()
-        sql = "SELECT * FROM practices WHERE practice_code = ?"
-        cursor.execute(sql, (code,))
-        result = cursor.fetchone()
-        return result
+        cursor.execute("SELECT * FROM practices WHERE practice_code = ?", (code,))
+        return cursor.fetchone()
 
     def update_practice(self, code, new_name):
-        if not self.conn:
-            return
         cursor = self.conn.cursor()
-        sql = "UPDATE practices SET practice_name = ? WHERE practice_code = ?"
-        cursor.execute(sql, (new_name, code))
+        cursor.execute(
+            "UPDATE practices SET practice_name = ? WHERE practice_code = ?", 
+            (new_name, code)
+        )
         self.conn.commit()
 
     def delete_practice(self, code):
-        if not self.conn:
-            return
         cursor = self.conn.cursor()
-        sql = "DELETE FROM practices WHERE practice_code = ?"
-        cursor.execute(sql, (code,))
+        cursor.execute("DELETE FROM practices WHERE practice_code = ?", (code,))
         self.conn.commit()
