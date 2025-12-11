@@ -69,3 +69,36 @@ class DatabaseManager:
             VALUES (?, ?, ?)
         ''', practices_data)
         self.conn.commit()
+
+    def add_practice(self, code, name, postcode):
+        if not self.conn:
+            return
+        cursor = self.conn.cursor()
+        sql = "INSERT INTO practices (practice_code, practice_name, postcode) VALUES (?, ?, ?)"
+        cursor.execute(sql, (code, name, postcode))
+        self.conn.commit()
+
+    def get_practice(self, code):
+        if not self.conn:
+            return None
+        cursor = self.conn.cursor()
+        sql = "SELECT * FROM practices WHERE practice_code = ?"
+        cursor.execute(sql, (code,))
+        result = cursor.fetchone()
+        return result
+
+    def update_practice(self, code, new_name):
+        if not self.conn:
+            return
+        cursor = self.conn.cursor()
+        sql = "UPDATE practices SET practice_name = ? WHERE practice_code = ?"
+        cursor.execute(sql, (new_name, code))
+        self.conn.commit()
+
+    def delete_practice(self, code):
+        if not self.conn:
+            return
+        cursor = self.conn.cursor()
+        sql = "DELETE FROM practices WHERE practice_code = ?"
+        cursor.execute(sql, (code,))
+        self.conn.commit()

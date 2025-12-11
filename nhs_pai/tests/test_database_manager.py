@@ -14,6 +14,7 @@ TEST_DB_NAME = 'test_nhs.db'
 def db_manager():
     """Fixture to create a temporary test DB and clean it up afterwards."""
     manager = DatabaseManager(TEST_DB_NAME)
+    manager.create_tables()
     
     yield manager
     
@@ -76,15 +77,15 @@ def test_crud_practice(db_manager):
     # 2. READ
     result = db_manager.get_practice(practice_code)
     assert result is not None
-    assert result['practice_name'] == initial_name
-    assert result['postcode'] == postcode
+    assert result[1] == initial_name
+    assert result[2] == postcode
     
     # 3. UPDATE
     new_name = "Updated Health Centre"
     db_manager.update_practice(practice_code, new_name)
     
     updated_result = db_manager.get_practice(practice_code)
-    assert updated_result['practice_name'] == new_name
+    assert updated_result[1] == new_name
     
     # 4. DELETE
     db_manager.delete_practice(practice_code)
