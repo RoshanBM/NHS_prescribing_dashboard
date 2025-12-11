@@ -41,7 +41,7 @@ def get_joined_data(filters=None):
             'region': 'region',
             'category': 'category',
             'ACT COST': 'cost',
-            'ITEMS': 'items',
+            'ITEMS': 'total_items',
             'presentation': 'presentation',
             'BNF CODE': 'bnf_code',
             'POSTCODE': 'post_code'
@@ -67,7 +67,7 @@ def get_joined_data(filters=None):
                 merged_df = merged_df[merged_df['post_code'].str.contains(filters['post_code'], case=False, na=False)]
 
         # Select columns to display
-        final_df = merged_df[['practice_name', 'drug_name', 'presentation', 'items', 'cost', 'bnf_code', 'region', 'category', 'post_code']]
+        final_df = merged_df[['practice_name', 'drug_name', 'presentation', 'total_items', 'cost', 'bnf_code', 'region', 'category', 'post_code']]
         
         return final_df.head(100).to_dict(orient='records') # Increased limit slightly
         

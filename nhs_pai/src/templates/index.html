@@ -70,7 +70,7 @@
                             <strong>{{ row.drug_name }}</strong><br>
                             <small class="text-muted">{{ row.presentation }}</small>
                         </td>
-                        <td>{{ row.items }}</td>
+                        <td>{{ row.total_items }}</td>
                         <td class="text-end fw-bold">£{{ "%.2f"|format(row.cost) }}</td>
                     </tr>
                     {% else %}
