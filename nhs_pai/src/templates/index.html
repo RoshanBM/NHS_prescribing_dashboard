@@ -92,7 +92,12 @@
                             <strong>{{ row.drug_name }}</strong><br>
                             <small class="text-muted">{{ row.presentation }}</small>
                         </td>
-                        <td>£{{ "%.2f"|format(row.price_per_unit) }}</td>
+                        <td>
+                            £{{ "%.2f"|format(row.price_per_unit) }}
+                            {% if row.is_cheapest %}
+                                <span class="badge bg-success ms-1">Cheapest</span>
+                            {% endif %}
+                        </td>
                         <td>{{ row.total_items }}</td>
                         <td class="text-end fw-bold">£{{ "%.2f"|format(row.cost) }}</td>
                     </tr>

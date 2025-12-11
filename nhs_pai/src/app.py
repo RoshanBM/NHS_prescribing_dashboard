@@ -9,7 +9,7 @@ def utility_processor():
     def sort_url(sort_by):
         args = request.args.copy()
         args['sort'] = sort_by
-        current_sort = request.args.get('sort', 'cost')
+        current_sort = request.args.get('sort', 'price_per_unit')
         current_dir = request.args.get('direction', 'asc')
         
         if sort_by == current_sort and current_dir == 'asc':
@@ -19,7 +19,7 @@ def utility_processor():
         return url_for('index', **args)
     return dict(sort_url=sort_url)
 
-def get_joined_data(filters=None, sort_by='cost', sort_dir='asc'):
+def get_joined_data(filters=None, sort_by='price_per_unit', sort_dir='asc'):
     """
     Reads CSVs, joins them, and applies filters if provided.
     filters: dict of {column_name: value}
@@ -88,6 +88,15 @@ def get_joined_data(filters=None, sort_by='cost', sort_dir='asc'):
                 # Normalize column: remove spaces, then check contains
                 merged_df = merged_df[merged_df['post_code'].str.replace(" ", "").str.contains(search_pc, case=False, na=False)]
         
+        # --- NEW: Identify Cheapest Price Per Unit ---
+        # Only if we have data and filters are applied (optional logic, but good for context)
+        # We calculate min_price across the *filtered* dataset
+        if not merged_df.empty:
+            min_price = merged_df['price_per_unit'].min()
+            merged_df['is_cheapest'] = merged_df['price_per_unit'] == min_price
+        else:
+            merged_df['is_cheapest'] = False
+
         # Handle sort column mapping
         if sort_by == 'items':
             sort_by = 'total_items'
@@ -95,14 +104,14 @@ def get_joined_data(filters=None, sort_by='cost', sort_dir='asc'):
         valid_sort_cols = ['total_items', 'cost', 'price_per_unit', 'practice_name', 'drug_name']
         
         if sort_by not in valid_sort_cols:
-            sort_by = 'cost' # Default fallback
+            sort_by = 'price_per_unit' # Default fallback
 
         ascending = True if sort_dir == 'asc' else False
         
         # Apply Pandas Sort
         merged_df = merged_df.sort_values(by=sort_by, ascending=ascending)
         # Select columns to display
-        final_df = merged_df[['practice_name', 'drug_name', 'presentation', 'total_items', 'cost', 'bnf_code', 'region', 'category', 'post_code', 'price_per_unit']]
+        final_df = merged_df[['practice_name', 'drug_name', 'presentation', 'total_items', 'cost', 'bnf_code', 'region', 'category', 'post_code', 'price_per_unit', 'is_cheapest']]
         
         return final_df.head(100).to_dict(orient='records') # Increased limit slightly
         
@@ -120,7 +129,7 @@ def index():
         'post_code': request.args.get('post_code')
     }
     
-    sort_by = request.args.get('sort', 'cost') # Default to cost
+    sort_by = request.args.get('sort', 'price_per_unit') # Default to price_per_unit
     sort_dir = request.args.get('direction', 'asc') # Default to asc
     # 2. Pass filters to data function
     prescriptions = get_joined_data(filters=filter_params, sort_by=sort_by, sort_dir=sort_dir)
