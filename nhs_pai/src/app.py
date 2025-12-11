@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import re
 from database_manager import DatabaseManager
+from analytics import calculate_filtered_average_cost
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'  # Required for flash messages
@@ -154,6 +155,9 @@ def get_joined_data(filters=None, sort_by='price_per_unit', sort_dir='asc'):
         else:
             merged_df['is_cheapest'] = False
 
+        # Calculate Average Cost for filtered data
+        avg_cost = calculate_filtered_average_cost(merged_df)
+
         # Handle sort column mapping
         if sort_by == 'items':
             sort_by = 'total_items'
@@ -170,10 +174,10 @@ def get_joined_data(filters=None, sort_by='price_per_unit', sort_dir='asc'):
         # Select columns to display
         final_df = merged_df[['practice_name', 'drug_name', 'presentation', 'total_items', 'cost', 'bnf_code', 'region', 'category', 'post_code', 'price_per_unit', 'is_cheapest']]
         
-        return final_df.head(100).to_dict(orient='records') # Increased limit slightly
+        return final_df.head(100).to_dict(orient='records'), avg_cost # Increased limit slightly
         
     except FileNotFoundError:
-        return []
+        return [], 0
 
 @app.route('/')
 def index():
@@ -189,9 +193,9 @@ def index():
     sort_by = request.args.get('sort', 'price_per_unit') # Default to price_per_unit
     sort_dir = request.args.get('direction', 'asc') # Default to asc
     # 2. Pass filters to data function
-    prescriptions = get_joined_data(filters=filter_params, sort_by=sort_by, sort_dir=sort_dir)
+    prescriptions, avg_cost = get_joined_data(filters=filter_params, sort_by=sort_by, sort_dir=sort_dir)
     
-    return render_template('index.html', prescriptions=prescriptions, current_sort=sort_by, current_dir=sort_dir)
+    return render_template('index.html', prescriptions=prescriptions, current_sort=sort_by, current_dir=sort_dir, avg_cost=avg_cost)
 
 # --- Edit Database Routes ---
 

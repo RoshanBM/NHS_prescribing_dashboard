@@ -30,4 +30,22 @@ def get_category_costs():
         print(f"Error calculating stats: {e}")
         return {}
 
-# ... (Rest of app.py) ...
+def calculate_filtered_average_cost(df):
+    """
+    Calculates average cost per item for the provided filtered dataframe.
+    Expects columns: 'cost', 'total_items'
+    """
+    if df.empty:
+        return 0
+    
+    # Check if required columns exist
+    if 'cost' not in df.columns or 'total_items' not in df.columns:
+        return 0
+
+    total_cost = df['cost'].sum()
+    total_items = df['total_items'].sum()
+    
+    if total_items == 0:
+        return 0
+        
+    return total_cost / total_items
