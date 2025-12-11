@@ -395,3 +395,53 @@ def delete_prescription(id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+def get_regional_cost_graph(category_name):
+    """
+    Generates data for a Plotly Bar Chart.
+    X = Region
+    Y = Average Cost Per Item (Sum Cost / Sum Items)
+    Filtered by the specific category provided.
+    """
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(base_dir, '../../data')
+    
+    try:
+        # Load Data
+        df_presc = pd.read_csv(os.path.join(data_dir, 'clean_prescriptions.csv'))
+        df_prac = pd.read_csv(os.path.join(data_dir, 'clean_practices.csv'))
+        df_drug = pd.read_csv(os.path.join(data_dir, 'clean_drugs.csv'))
+
+        # 1. Join Prescriptions -> Drugs (to filter by Category first, for speed)
+        # Note: Merging everything first is easier to code, filtering early is faster.
+        # Let's merge fully for safety.
+        merged = pd.merge(df_presc, df_prac, on='PRACTICE_CODE', how='inner')
+        merged = pd.merge(merged, df_drug, left_on='BNF CODE', right_on='bnf_code', how='inner')
+
+        # 2. Filter by Category
+        filtered_df = merged[merged['category'] == category_name]
+        
+        if filtered_df.empty:
+            return {'x': [], 'y': [], 'type': 'bar'}
+
+        # 3. Group by Region
+        grouped = filtered_df.groupby('region')[['ACT COST', 'ITEMS']].sum()
+
+        # 4. Calculate Average Price Per Item
+        # Avoid division by zero
+        grouped = grouped[grouped['ITEMS'] > 0]
+        grouped['avg_cost'] = grouped['ACT COST'] / grouped['ITEMS']
+
+        # 5. Sort Descending (Highest cost first)
+        grouped = grouped.sort_values(by='avg_cost', ascending=False)
+
+        # 6. Format for Plotly
+        return {
+            'x': grouped.index.tolist(),         # The Regions
+            'y': grouped['avg_cost'].tolist(),   # The Costs
+            'type': 'bar',
+            'marker': {'color': '#1f77b4'}       # Optional styling
+        }
+
+    except FileNotFoundError:
+        return {'x': [], 'y': [], 'type': 'bar'}
