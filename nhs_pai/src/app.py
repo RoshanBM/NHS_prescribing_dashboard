@@ -1,8 +1,65 @@
-from flask import Flask, render_template, request, url_for  # Added 'request', 'url_for'
+from flask import Flask, render_template, request, url_for, flash, redirect
 import pandas as pd
 import os
+import re
+from database_manager import DatabaseManager
 
 app = Flask(__name__)
+app.secret_key = 'supersecretkey'  # Required for flash messages
+
+def populate_db(manager):
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(base_dir, '../data/processed')
+    
+    try:
+        # Practices
+        if not manager.get_all_practices(limit=1):
+            print("Populating Practices...")
+            df_prac = pd.read_csv(os.path.join(data_dir, 'clean_practices.csv'))
+            practices_data = list(df_prac[['PRACTICE_CODE', 'PRACTICE_NAME', 'POSTCODE']].itertuples(index=False, name=None))
+            manager.insert_practices(practices_data)
+        
+        # Drugs
+        if not manager.get_all_drugs(limit=1):
+            print("Populating Drugs...")
+            df_drug = pd.read_csv(os.path.join(data_dir, 'clean_drugs.csv'))
+            drugs_data = list(df_drug[['bnf_code', 'name']].itertuples(index=False, name=None))
+            manager.insert_drugs(drugs_data)
+        
+        # Prescriptions
+        if not manager.get_all_prescriptions(limit=1):
+            print("Populating Prescriptions...")
+            df_presc = pd.read_csv(os.path.join(data_dir, 'clean_prescriptions.csv'))
+            # Ensure columns match: practice_code, bnf_code, items, act_cost, quantity
+            presc_data = list(df_presc[['PRACTICE_CODE', 'BNF CODE', 'ITEMS', 'ACT COST', 'QUANTITY']].itertuples(index=False, name=None))
+            manager.insert_prescriptions(presc_data)
+            
+        print("Database population check complete.")
+    except Exception as e:
+        print(f"Error populating database: {e}")
+
+def get_db_manager():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    db_path = os.path.join(base_dir, '../data/nhs_data.db')
+    # Ensure directory exists
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    manager = DatabaseManager(db_path)
+    manager.create_tables() # Ensure tables exist
+    populate_db(manager) # Populate if empty
+    return manager
+
+# --- Validation Helpers ---
+def validate_practice_code(code):
+    # Alphanumeric, typically 6 characters
+    return bool(re.match(r'^[A-Z0-9]{6}$', code))
+
+def validate_bnf_code(code):
+    # Alphanumeric, typically 9-15 characters
+    return bool(re.match(r'^[A-Z0-9]+$', code))
+
+def validate_postcode(postcode):
+    # Simple UK postcode regex
+    return bool(re.match(r'^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$', postcode, re.IGNORECASE))
 
 @app.context_processor
 def utility_processor():
@@ -135,6 +192,187 @@ def index():
     prescriptions = get_joined_data(filters=filter_params, sort_by=sort_by, sort_dir=sort_dir)
     
     return render_template('index.html', prescriptions=prescriptions, current_sort=sort_by, current_dir=sort_dir)
+
+# --- Edit Database Routes ---
+
+@app.route('/edit_database')
+def edit_database():
+    manager = get_db_manager()
+    
+    # Practices Filter
+    p_code = request.args.get('p_code', '')
+    p_name = request.args.get('p_name', '')
+    
+    # Drugs Filter
+    d_code = request.args.get('d_code', '')
+    d_name = request.args.get('d_name', '')
+    
+    # Prescriptions Filter
+    pr_practice = request.args.get('pr_practice', '')
+    pr_drug = request.args.get('pr_drug', '')
+
+    # Use search methods with limits
+    if p_code or p_name:
+        practices = manager.search_practices(code=p_code, name=p_name)
+    else:
+        practices = manager.get_all_practices(limit=50)
+
+    if d_code or d_name:
+        drugs = manager.search_drugs(code=d_code, name=d_name)
+    else:
+        drugs = manager.get_all_drugs(limit=50)
+
+    if pr_practice or pr_drug:
+        prescriptions = manager.search_prescriptions(practice_code=pr_practice, bnf_code=pr_drug)
+    else:
+        prescriptions = manager.get_all_prescriptions(limit=50)
+
+    manager.close_connection()
+
+    # Determine active tab
+    active_tab = 'practices'
+    if d_code or d_name:
+        active_tab = 'drugs'
+    elif pr_practice or pr_drug:
+        active_tab = 'prescriptions'
+
+    return render_template('edit_database.html', 
+                           practices=practices, drugs=drugs, prescriptions=prescriptions,
+                           p_code=p_code, p_name=p_name,
+                           d_code=d_code, d_name=d_name,
+                           pr_practice=pr_practice, pr_drug=pr_drug,
+                           active_tab=active_tab)
+
+@app.route('/edit_database/add_practice', methods=['POST'])
+def add_practice():
+    code = request.form['practice_code']
+    name = request.form['practice_name']
+    postcode = request.form['postcode']
+    
+    if not validate_practice_code(code):
+        flash(f'Invalid Practice Code format: {code}. Must be 6 alphanumeric characters.', 'danger')
+        return redirect(url_for('edit_database'))
+        
+    if not validate_postcode(postcode):
+        flash(f'Invalid Postcode format: {postcode}.', 'danger')
+        return redirect(url_for('edit_database'))
+
+    manager = get_db_manager()
+    if manager.add_practice(code, name, postcode):
+        flash('Practice added successfully!', 'success')
+    else:
+        flash('Error adding practice. Code may already exist.', 'danger')
+    manager.close_connection()
+    return redirect(url_for('edit_database'))
+
+@app.route('/edit_database/update_practice', methods=['POST'])
+def update_practice():
+    code = request.form['practice_code']
+    name = request.form['practice_name']
+    manager = get_db_manager()
+    manager.update_practice(code, name)
+    manager.close_connection()
+    flash('Practice updated successfully!', 'success')
+    return redirect(url_for('edit_database'))
+
+@app.route('/edit_database/delete_practice/<code>')
+def delete_practice(code):
+    manager = get_db_manager()
+    manager.delete_practice(code)
+    manager.close_connection()
+    flash('Practice deleted successfully!', 'success')
+    return redirect(url_for('edit_database'))
+
+@app.route('/edit_database/add_drug', methods=['POST'])
+def add_drug():
+    code = request.form['bnf_code']
+    name = request.form['drug_name']
+    
+    if not validate_bnf_code(code):
+        flash(f'Invalid BNF Code format: {code}. Must be alphanumeric.', 'danger')
+        return redirect(url_for('edit_database'))
+
+    manager = get_db_manager()
+    if manager.add_drug(code, name):
+        flash('Drug added successfully!', 'success')
+    else:
+        flash('Error adding drug. Code may already exist.', 'danger')
+    manager.close_connection()
+    return redirect(url_for('edit_database'))
+
+@app.route('/edit_database/update_drug', methods=['POST'])
+def update_drug():
+    code = request.form['bnf_code']
+    name = request.form['drug_name']
+    manager = get_db_manager()
+    manager.update_drug(code, name)
+    manager.close_connection()
+    flash('Drug updated successfully!', 'success')
+    return redirect(url_for('edit_database'))
+
+@app.route('/edit_database/delete_drug/<code>')
+def delete_drug(code):
+    manager = get_db_manager()
+    manager.delete_drug(code)
+    manager.close_connection()
+    flash('Drug deleted successfully!', 'success')
+    return redirect(url_for('edit_database'))
+
+@app.route('/edit_database/add_prescription', methods=['POST'])
+def add_prescription():
+    practice_code = request.form['practice_code']
+    bnf_code = request.form['bnf_code']
+    try:
+        items = int(request.form['items'])
+        act_cost = float(request.form['act_cost'])
+        quantity = float(request.form['quantity'])
+    except ValueError:
+        flash('Invalid number format for Items, Cost, or Quantity.', 'danger')
+        return redirect(url_for('edit_database'))
+
+    manager = get_db_manager()
+    # Check if practice and drug exist
+    if not manager.get_practice(practice_code):
+        flash(f'Practice {practice_code} does not exist.', 'danger')
+        manager.close_connection()
+        return redirect(url_for('edit_database'))
+        
+    if not manager.get_drug(bnf_code):
+        flash(f'Drug {bnf_code} does not exist.', 'danger')
+        manager.close_connection()
+        return redirect(url_for('edit_database'))
+
+    if manager.add_prescription(practice_code, bnf_code, items, act_cost, quantity):
+        flash('Prescription added successfully!', 'success')
+    else:
+        flash('Error adding prescription.', 'danger')
+    manager.close_connection()
+    return redirect(url_for('edit_database'))
+
+@app.route('/edit_database/update_prescription', methods=['POST'])
+def update_prescription():
+    id = request.form['id']
+    try:
+        items = int(request.form['items'])
+        act_cost = float(request.form['act_cost'])
+        quantity = float(request.form['quantity'])
+    except ValueError:
+        flash('Invalid number format.', 'danger')
+        return redirect(url_for('edit_database'))
+        
+    manager = get_db_manager()
+    manager.update_prescription(id, items, act_cost, quantity)
+    manager.close_connection()
+    flash('Prescription updated successfully!', 'success')
+    return redirect(url_for('edit_database'))
+
+@app.route('/edit_database/delete_prescription/<id>')
+def delete_prescription(id):
+    manager = get_db_manager()
+    manager.delete_prescription(id)
+    manager.close_connection()
+    flash('Prescription deleted successfully!', 'success')
+    return redirect(url_for('edit_database'))
 
 if __name__ == '__main__':
     app.run(debug=True)

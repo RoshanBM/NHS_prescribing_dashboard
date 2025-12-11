@@ -70,6 +70,32 @@ class DatabaseManager:
         ''', practices_data)
         self.conn.commit()
 
+    def insert_drugs(self, drugs_data):
+        """
+        drugs_data: List of tuples (bnf_code, drug_name)
+        """
+        if not self.conn:
+            return
+        cursor = self.conn.cursor()
+        cursor.executemany('''
+            INSERT OR IGNORE INTO drugs (bnf_code, drug_name)
+            VALUES (?, ?)
+        ''', drugs_data)
+        self.conn.commit()
+
+    def insert_prescriptions(self, prescriptions_data):
+        """
+        prescriptions_data: List of tuples (practice_code, bnf_code, items, act_cost, quantity)
+        """
+        if not self.conn:
+            return
+        cursor = self.conn.cursor()
+        cursor.executemany('''
+            INSERT INTO prescriptions (practice_code, bnf_code, items, act_cost, quantity)
+            VALUES (?, ?, ?, ?, ?)
+        ''', prescriptions_data)
+        self.conn.commit()
+
     def add_practice(self, code, name, postcode):
         try:
             cursor = self.conn.cursor()
@@ -100,3 +126,129 @@ class DatabaseManager:
         cursor = self.conn.cursor()
         cursor.execute("DELETE FROM practices WHERE practice_code = ?", (code,))
         self.conn.commit()
+
+    # --- Drugs CRUD ---
+    def add_drug(self, bnf_code, drug_name):
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(
+                "INSERT INTO drugs (bnf_code, drug_name) VALUES (?, ?)", 
+                (bnf_code, drug_name)
+            )
+            self.conn.commit()
+            return True
+        except sqlite3.IntegrityError:
+            return False
+
+    def get_drug(self, bnf_code):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM drugs WHERE bnf_code = ?", (bnf_code,))
+        return cursor.fetchone()
+
+    def update_drug(self, bnf_code, new_name):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            "UPDATE drugs SET drug_name = ? WHERE bnf_code = ?", 
+            (new_name, bnf_code)
+        )
+        self.conn.commit()
+
+    def delete_drug(self, bnf_code):
+        cursor = self.conn.cursor()
+        cursor.execute("DELETE FROM drugs WHERE bnf_code = ?", (bnf_code,))
+        self.conn.commit()
+
+    # --- Prescriptions CRUD ---
+    def add_prescription(self, practice_code, bnf_code, items, act_cost, quantity):
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(
+                """INSERT INTO prescriptions (practice_code, bnf_code, items, act_cost, quantity) 
+                   VALUES (?, ?, ?, ?, ?)""", 
+                (practice_code, bnf_code, items, act_cost, quantity)
+            )
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            logging.error(f"Error adding prescription: {e}")
+            return False
+
+    def get_prescription(self, id):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM prescriptions WHERE id = ?", (id,))
+        return cursor.fetchone()
+
+    def update_prescription(self, id, items, act_cost, quantity):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """UPDATE prescriptions 
+               SET items = ?, act_cost = ?, quantity = ? 
+               WHERE id = ?""", 
+            (items, act_cost, quantity, id)
+        )
+        self.conn.commit()
+
+    def delete_prescription(self, id):
+        cursor = self.conn.cursor()
+        cursor.execute("DELETE FROM prescriptions WHERE id = ?", (id,))
+        self.conn.commit()
+
+    def get_all_practices(self, limit=100):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM practices LIMIT ?", (limit,))
+        return cursor.fetchall()
+
+    def search_practices(self, code=None, name=None, limit=100):
+        cursor = self.conn.cursor()
+        query = "SELECT * FROM practices WHERE 1=1"
+        params = []
+        if code:
+            query += " AND practice_code LIKE ?"
+            params.append(f"%{code}%")
+        if name:
+            query += " AND practice_name LIKE ?"
+            params.append(f"%{name}%")
+        query += " LIMIT ?"
+        params.append(limit)
+        cursor.execute(query, params)
+        return cursor.fetchall()
+
+    def get_all_drugs(self, limit=100):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM drugs LIMIT ?", (limit,))
+        return cursor.fetchall()
+
+    def search_drugs(self, code=None, name=None, limit=100):
+        cursor = self.conn.cursor()
+        query = "SELECT * FROM drugs WHERE 1=1"
+        params = []
+        if code:
+            query += " AND bnf_code LIKE ?"
+            params.append(f"%{code}%")
+        if name:
+            query += " AND drug_name LIKE ?"
+            params.append(f"%{name}%")
+        query += " LIMIT ?"
+        params.append(limit)
+        cursor.execute(query, params)
+        return cursor.fetchall()
+        
+    def get_all_prescriptions(self, limit=100):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM prescriptions LIMIT ?", (limit,))
+        return cursor.fetchall()
+
+    def search_prescriptions(self, practice_code=None, bnf_code=None, limit=100):
+        cursor = self.conn.cursor()
+        query = "SELECT * FROM prescriptions WHERE 1=1"
+        params = []
+        if practice_code:
+            query += " AND practice_code LIKE ?"
+            params.append(f"%{practice_code}%")
+        if bnf_code:
+            query += " AND bnf_code LIKE ?"
+            params.append(f"%{bnf_code}%")
+        query += " LIMIT ?"
+        params.append(limit)
+        cursor.execute(query, params)
+        return cursor.fetchall()
