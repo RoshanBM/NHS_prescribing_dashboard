@@ -397,12 +397,7 @@ if __name__ == '__main__':
     app.run(debug=True)
 
 def get_regional_cost_graph(category_name):
-    """
-    Generates data for a Plotly Bar Chart.
-    X = Region
-    Y = Average Cost Per Item (Sum Cost / Sum Items)
-    Filtered by the specific category provided.
-    """
+
     base_dir = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(base_dir, '../../data')
     
@@ -441,6 +436,50 @@ def get_regional_cost_graph(category_name):
             'y': grouped['avg_cost'].tolist(),   # The Costs
             'type': 'bar',
             'marker': {'color': '#1f77b4'}       # Optional styling
+        }
+
+    except FileNotFoundError:
+        return {'x': [], 'y': [], 'type': 'bar'}
+
+
+def get_drug_regional_ppu(drug_name):
+
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(base_dir, '../../data')
+    
+    try:
+        # Load Data
+        df_presc = pd.read_csv(os.path.join(data_dir, 'clean_prescriptions.csv'))
+        df_prac = pd.read_csv(os.path.join(data_dir, 'clean_practices.csv'))
+        df_drug = pd.read_csv(os.path.join(data_dir, 'clean_drugs.csv'))
+
+        # 1. Merge
+        merged = pd.merge(df_presc, df_prac, on='PRACTICE_CODE', how='inner')
+        merged = pd.merge(merged, df_drug, left_on='BNF CODE', right_on='bnf_code', how='inner')
+
+        # 2. Filter by Exact Drug Name (Case insensitive for safety)
+        # Using 'name' column from clean_drugs.csv
+        filtered_df = merged[merged['name'].str.lower() == drug_name.lower()]
+        
+        if filtered_df.empty:
+            return {'x': [], 'y': [], 'type': 'bar'}
+
+        # 3. Group by Region
+        grouped = filtered_df.groupby('region')[['ACT COST', 'ITEMS']].sum()
+
+        # 4. Calculate Price Per Unit (Weighted Average)
+        grouped = grouped[grouped['ITEMS'] > 0]
+        grouped['ppu'] = grouped['ACT COST'] / grouped['ITEMS']
+
+        # 5. Sort Descending (Most expensive region first)
+        grouped = grouped.sort_values(by='ppu', ascending=False)
+
+        # 6. Format for Plotly
+        return {
+            'x': grouped.index.tolist(),         # Regions
+            'y': grouped['ppu'].tolist(),        # Price Per Unit
+            'type': 'bar',
+            'marker': {'color': '#dc3545'}       # Red color for "Price Alert"
         }
 
     except FileNotFoundError:
