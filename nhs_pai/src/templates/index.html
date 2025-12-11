@@ -55,6 +55,7 @@
                         <th>Post Code</th>
                         <th>Category</th>
                         <th>Drug Details</th>
+                        <th>Price / Unit</th>
                         <th>Items</th>
                         <th class="text-end">Cost (£)</th>
                     </tr>
@@ -70,12 +71,13 @@
                             <strong>{{ row.drug_name }}</strong><br>
                             <small class="text-muted">{{ row.presentation }}</small>
                         </td>
+                        <td>£{{ "%.2f"|format(row.price_per_unit) }}</td>
                         <td>{{ row.total_items }}</td>
                         <td class="text-end fw-bold">£{{ "%.2f"|format(row.cost) }}</td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="7" class="text-center py-4">
+                        <td colspan="8" class="text-center py-4">
                             <span class="text-muted">No results found matching your filters.</span>
                         </td>
                     </tr>

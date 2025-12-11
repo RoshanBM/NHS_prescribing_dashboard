@@ -47,7 +47,10 @@ def get_joined_data(filters=None):
             'POSTCODE': 'post_code'
         }, inplace=True)
 
-        merged_df['price_per_unit'] = merged_df['cost'] / merged_df['total_items']
+        merged_df['price_per_unit'] = merged_df.apply(
+            lambda row: row['cost'] / row['total_items'] if row['total_items'] > 0 else 0, 
+            axis=1
+        )
         # --- NEW: Apply Filters ---
         if filters:
             if filters.get('drug_name'):

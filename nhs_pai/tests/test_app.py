@@ -36,6 +36,7 @@ def test_homepage_displays_real_csv_data(client):
     # 2. Check for Table Headers from your specific columns
     assert "Practice Name" in page_content
     assert "Cost (£)" in page_content
+    assert "Price / Unit" in page_content
     
     # 3. Check for specific data we saw in your CSV (e.g., "Hypnotics" or specific practice)
     # Note: This assumes 'clean_practices.csv' contains 'Chaudhury Surgery' as seen in the inspection.
