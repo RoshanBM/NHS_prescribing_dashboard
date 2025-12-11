@@ -122,3 +122,26 @@ def test_price_per_unit_calculation(client):
         assert record['price_per_unit'] == expected_ppu
         assert record['price_per_unit'] == pytest.approx(expected_ppu, 0.01)
 
+def test_sorting_functionality(client):
+   
+    # 1. Request sorted data
+
+    response = client.get('/?sort=items&direction=desc')
+    assert response.status_code == 200
+
+    from app import get_joined_data
+    
+    # Test Sorting by Items Descending
+    data_desc = get_joined_data(sort_by='items', sort_dir='desc')
+    if len(data_desc) >= 2:
+        assert data_desc[0]['items'] >= data_desc[1]['items']
+        
+    # Test Sorting by Cost Ascending (Cheapest first)
+    data_asc = get_joined_data(sort_by='cost', sort_dir='asc')
+    if len(data_asc) >= 2:
+        assert data_asc[0]['cost'] <= data_asc[1]['cost']
+
+    # Test Sorting by Price Per Unit
+    data_ppu = get_joined_data(sort_by='price_per_unit', sort_dir='desc')
+    if len(data_ppu) >= 2:
+        assert data_ppu[0]['price_per_unit'] >= data_ppu[1]['price_per_unit']
