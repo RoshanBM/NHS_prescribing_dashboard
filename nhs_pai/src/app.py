@@ -2,11 +2,30 @@ from flask import Flask, render_template, request, url_for, flash, redirect
 import pandas as pd
 import os
 import re
+import logging
+from logging.handlers import RotatingFileHandler
 from database_manager import DatabaseManager
 from analytics import calculate_price_stats
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'  # Required for flash messages
+
+# Configure Logging
+log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../logs')
+os.makedirs(log_dir, exist_ok=True)
+log_file = os.path.join(log_dir, 'app.log')
+
+handler = RotatingFileHandler(log_file, maxBytes=100000, backupCount=3)
+handler.setLevel(logging.INFO)
+formatter = logging.Formatter('[%(asctime)s] %(levelname)s [%(remote_addr)s] %(message)s')
+# We need to inject remote_addr into the record, or just include it in the message.
+# Simpler to just include it in the message for now, or use a custom filter.
+# Let's stick to standard formatter and put IP in the message.
+formatter = logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s')
+handler.setFormatter(formatter)
+
+app.logger.addHandler(handler)
+app.logger.setLevel(logging.INFO)
 
 def populate_db(manager):
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -218,6 +237,10 @@ def index():
         'post_code': request.args.get('post_code')
     }
     
+    # Log the access
+    log_msg = f"User {request.remote_addr} accessed Homepage. Filters: {filter_params}"
+    app.logger.info(log_msg)
+    
     sort_by = request.args.get('sort', 'price_per_unit') # Default to price_per_unit
     sort_dir = request.args.get('direction', 'asc') # Default to asc
     
@@ -301,6 +324,8 @@ def add_practice():
     name = request.form['practice_name']
     postcode = request.form['postcode']
     
+    app.logger.info(f"User {request.remote_addr} attempting to add practice: {code}, {name}")
+
     if not validate_practice_code(code):
         flash(f'Invalid Practice Code format: {code}. Must be 6 alphanumeric characters.', 'danger')
         return redirect(url_for('edit_database'))
@@ -321,6 +346,7 @@ def add_practice():
 def update_practice():
     code = request.form['practice_code']
     name = request.form['practice_name']
+    app.logger.info(f"User {request.remote_addr} updating practice {code} to name {name}")
     manager = get_db_manager()
     manager.update_practice(code, name)
     manager.close_connection()
@@ -329,6 +355,7 @@ def update_practice():
 
 @app.route('/edit_database/delete_practice/<code>')
 def delete_practice(code):
+    app.logger.warning(f"User {request.remote_addr} deleting practice {code}")
     manager = get_db_manager()
     manager.delete_practice(code)
     manager.close_connection()
@@ -340,6 +367,8 @@ def add_drug():
     code = request.form['bnf_code']
     name = request.form['drug_name']
     
+    app.logger.info(f"User {request.remote_addr} attempting to add drug: {code}, {name}")
+
     if not validate_bnf_code(code):
         flash(f'Invalid BNF Code format: {code}. Must be alphanumeric.', 'danger')
         return redirect(url_for('edit_database'))
@@ -356,6 +385,7 @@ def add_drug():
 def update_drug():
     code = request.form['bnf_code']
     name = request.form['drug_name']
+    app.logger.info(f"User {request.remote_addr} updating drug {code} to name {name}")
     manager = get_db_manager()
     manager.update_drug(code, name)
     manager.close_connection()
@@ -364,6 +394,7 @@ def update_drug():
 
 @app.route('/edit_database/delete_drug/<code>')
 def delete_drug(code):
+    app.logger.warning(f"User {request.remote_addr} deleting drug {code}")
     manager = get_db_manager()
     manager.delete_drug(code)
     manager.close_connection()
@@ -374,6 +405,9 @@ def delete_drug(code):
 def add_prescription():
     practice_code = request.form['practice_code']
     bnf_code = request.form['bnf_code']
+    
+    app.logger.info(f"User {request.remote_addr} attempting to add prescription: Practice={practice_code}, Drug={bnf_code}")
+
     try:
         items = int(request.form['items'])
         act_cost = float(request.form['act_cost'])
@@ -404,6 +438,7 @@ def add_prescription():
 @app.route('/edit_database/update_prescription', methods=['POST'])
 def update_prescription():
     id = request.form['id']
+    app.logger.info(f"User {request.remote_addr} updating prescription ID {id}")
     try:
         items = int(request.form['items'])
         act_cost = float(request.form['act_cost'])
@@ -420,6 +455,7 @@ def update_prescription():
 
 @app.route('/edit_database/delete_prescription/<id>')
 def delete_prescription(id):
+    app.logger.warning(f"User {request.remote_addr} deleting prescription ID {id}")
     manager = get_db_manager()
     manager.delete_prescription(id)
     manager.close_connection()
@@ -428,6 +464,7 @@ def delete_prescription(id):
 
 @app.route('/analytics')
 def analytics():
+    app.logger.info(f"User {request.remote_addr} accessed Analytics page.")
     base_dir = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(base_dir, '../data/processed')
     
