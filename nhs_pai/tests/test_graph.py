@@ -44,25 +44,27 @@ def test_generate_plotly_data_for_region_costs(mock_read_csv):
 
  
     target_category = "Hypnotics & Anxiolytics"
-    graph_data = get_regional_cost_graph(target_category)
+    price_graph = get_regional_cost_graph(target_category)
     
-
-    assert isinstance(graph_data, dict)
-    assert 'x' in graph_data # Regions
-    assert 'y' in graph_data # Costs
-    assert 'type' in graph_data
-    assert graph_data['type'] == 'bar'
+    # 2. Check Structure (Updated for single graph return)
+    assert isinstance(price_graph, dict)
     
-
-    assert len(graph_data['x']) > 5
-    assert len(graph_data['y']) == len(graph_data['x'])
+    # Check Price Graph
+    assert 'x' in price_graph # Regions
+    assert 'y' in price_graph # Costs
+    assert 'type' in price_graph
+    assert price_graph['type'] == 'bar'
     
-
-    assert isinstance(graph_data['y'][0], float)
-    assert graph_data['y'][0] > 0
+    # 3. Check Data Quality
+    assert len(price_graph['x']) > 5
+    assert len(price_graph['y']) == len(price_graph['x'])
     
-   
-    assert graph_data['y'][0] >= graph_data['y'][-1]
+    # 4. Check Math Logic (Sanity check)
+    assert isinstance(price_graph['y'][0], float)
+    assert price_graph['y'][0] > 0
+    
+    # 5. Check Sorting
+    assert price_graph['y'][0] >= price_graph['y'][-1]
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
@@ -100,19 +102,19 @@ def test_generate_graph_data_for_drug_ppu(mock_read_csv):
 
     # 1. Execute Function with a known drug name from your CSV
     target_drug = "Alzain" 
-    graph_data = get_drug_regional_ppu(target_drug)
+    price_graph = get_drug_regional_ppu(target_drug)
     
-    # 2. Check Structure
-    assert isinstance(graph_data, dict)
-    assert graph_data['type'] == 'bar'
+    # 2. Check Structure (Updated for single graph return)
+    assert isinstance(price_graph, dict)
+    
+    # Check Price Graph
+    assert price_graph['type'] == 'bar'
     
     # 3. Check Data Quality
-    assert len(graph_data['x']) > 0 
-    assert len(graph_data['y']) == len(graph_data['x'])
+    assert len(price_graph['x']) > 0 
+    assert len(price_graph['y']) == len(price_graph['x'])
     
     # 4. Check Math Logic
-    # Price per unit should be a reasonable float (e.g., £5.20)
-    # It should NOT be the total cost (which would be huge)
-    first_price = graph_data['y'][0]
+    first_price = price_graph['y'][0]
     assert isinstance(first_price, float)
     assert first_price > 0

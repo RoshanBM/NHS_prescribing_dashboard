@@ -28,7 +28,21 @@
     </nav>
 
     <div class="container">
-        <h2 class="mb-4 text-center">Regional Price Analytics</h2>
+        <h2 class="mb-4 text-center">Basic Analytics</h2>
+
+        <!-- Practice Graph (Always Shown) -->
+        {% if practice_graph %}
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Number of Practices per Region</h5>
+            </div>
+            <div class="card-body">
+                <div id="chart_practices"></div>
+            </div>
+        </div>
+        {% endif %}
+
+        <h2 class="mb-4 text-center">Regional Price Analysis</h2>
 
         <div class="card shadow-sm mb-4">
             <div class="card-body">
@@ -81,39 +95,76 @@
             </div>
         </div>
 
-        {% if graph_data %}
-        <div class="card shadow-sm">
+        <!-- Price Graph (Shown only when filtered) -->
+        {% if price_graph %}
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Price Analysis</h5>
+            </div>
             <div class="card-body">
                 <div id="chart"></div>
             </div>
         </div>
-        <script>
-            var graphData = {{ graph_data | tojson | safe }};
-            if (graphData) {
-                var data = [{
-                    x: graphData.x,
-                    y: graphData.y,
-                    type: graphData.type,
-                    marker: graphData.marker,
-                    text: graphData.text,
-                    hoverinfo: graphData.hoverinfo
-                }];
-
-                var layout = {
-                    title: 'Average Price Per Item by Region',
-                    xaxis: { title: 'Region', tickangle: -45 },
-                    yaxis: { title: 'Price (£)' },
-                    margin: { b: 100 }
-                };
-
-                Plotly.newPlot('chart', data, layout);
-            }
-        </script>
         {% elif selected_drug or selected_category %}
         <div class="alert alert-warning text-center">
             No data found for the selected filter.
         </div>
         {% endif %}
+        
+        <script>
+            // Practice Graph
+            var practiceGraph = {{ practice_graph | tojson | safe }};
+            if (practiceGraph) {
+                var practiceData = [{
+                    x: practiceGraph.x,
+                    y: practiceGraph.y,
+                    type: practiceGraph.type,
+                    marker: practiceGraph.marker
+                }];
+
+                var practiceLayout = {
+                    title: 'Number of Practices by Region',
+                    xaxis: { 
+                        title: 'Region', 
+                        showticklabels: false 
+                    },
+                    yaxis: { 
+                        title: 'Number of Practices'
+                    },
+                    margin: { b: 50 },
+                    height: 400
+                };
+
+                Plotly.newPlot('chart_practices', practiceData, practiceLayout);
+            }
+
+            // Price Graph
+            var priceGraph = {{ price_graph | tojson | safe }};
+            if (priceGraph) {
+                var priceData = [{
+                    x: priceGraph.x,
+                    y: priceGraph.y,
+                    type: priceGraph.type,
+                    marker: priceGraph.marker,
+                    text: priceGraph.text,
+                    hoverinfo: priceGraph.hoverinfo
+                }];
+
+                var priceLayout = {
+                    title: 'Average Price Per Item by Region',
+                    xaxis: { 
+                        title: 'Region', 
+                        tickangle: -45,
+                        tickmode: 'linear' 
+                    },
+                    yaxis: { title: 'Price (£)' },
+                    margin: { b: 150 },
+                    height: 600
+                };
+
+                Plotly.newPlot('chart', priceData, priceLayout);
+            }
+        </script>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

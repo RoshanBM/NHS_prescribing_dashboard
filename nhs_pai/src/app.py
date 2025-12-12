@@ -417,16 +417,34 @@ def analytics():
     selected_drug = request.args.get('drug_name')
     selected_category = request.args.get('category')
     
-    graph_data = None
+    practice_graph = get_practice_distribution_graph()
+    price_graph = None
     
     if selected_drug:
-        graph_data = get_drug_regional_ppu(selected_drug)
+        price_graph = get_drug_regional_ppu(selected_drug)
     elif selected_category:
-        graph_data = get_regional_cost_graph(selected_category)
+        price_graph = get_regional_cost_graph(selected_category)
         
     return render_template('analytics.html', drugs=drugs, categories=categories, 
                            selected_drug=selected_drug, selected_category=selected_category,
-                           graph_data=graph_data)
+                           practice_graph=practice_graph, price_graph=price_graph)
+
+def get_practice_distribution_graph():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(base_dir, '../data/processed')
+    try:
+        df_prac = pd.read_csv(os.path.join(data_dir, 'clean_practices.csv'))
+        all_practices = df_prac.groupby('region')['PRACTICE_CODE'].nunique().sort_values(ascending=False)
+        
+        practice_graph = {
+            'x': all_practices.index.tolist(),
+            'y': all_practices.tolist(),
+            'type': 'bar',
+            'marker': {'color': '#6c757d'}
+        }
+        return practice_graph
+    except FileNotFoundError:
+        return None
 
 def get_regional_cost_graph(category_name):
     """
@@ -494,7 +512,7 @@ def get_regional_cost_graph(category_name):
             hover_texts.append(f"Region: {r}<br>Avg Cost: £{c:.2f}<br>Total Items: {i}<br>Practices: {p}")
 
         # 8. Format for Plotly
-        return {
+        price_graph = {
             'x': regions,
             'y': costs,
             'type': 'bar',
@@ -502,6 +520,8 @@ def get_regional_cost_graph(category_name):
             'text': hover_texts,
             'hoverinfo': 'text'
         }
+        
+        return price_graph
 
     except FileNotFoundError:
         return None
@@ -562,7 +582,7 @@ def get_drug_regional_ppu(drug_name):
             hover_texts.append(f"Region: {r}<br>Price/Item: £{p:.2f}<br>Total Items: {i}<br>Practices: {prac}")
 
         # 8. Format for Plotly
-        return {
+        price_graph = {
             'x': regions,
             'y': ppus,
             'type': 'bar',
@@ -570,6 +590,8 @@ def get_drug_regional_ppu(drug_name):
             'text': hover_texts,
             'hoverinfo': 'text'
         }
+        
+        return price_graph
 
     except FileNotFoundError:
         return None
