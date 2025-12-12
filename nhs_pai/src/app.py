@@ -179,6 +179,34 @@ def get_joined_data(filters=None, sort_by='price_per_unit', sort_dir='asc'):
     except FileNotFoundError:
         return [], 0, 0, 0, {}, {}
 
+def get_dropdown_options():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(base_dir, '../data/processed')
+    
+    options = {
+        'drugs': [],
+        'practices': [],
+        'regions': [],
+        'categories': []
+    }
+    
+    try:
+        # Drugs & Categories
+        df_drug = pd.read_csv(os.path.join(data_dir, 'clean_drugs.csv'))
+        options['drugs'] = sorted(df_drug['name'].dropna().unique().tolist())
+        if 'category' in df_drug.columns:
+            options['categories'] = sorted(df_drug['category'].dropna().unique().tolist())
+            
+        # Practices & Regions
+        df_prac = pd.read_csv(os.path.join(data_dir, 'clean_practices.csv'))
+        options['practices'] = sorted(df_prac['PRACTICE_NAME'].dropna().unique().tolist())
+        options['regions'] = sorted(df_prac['region'].dropna().unique().tolist())
+        
+    except FileNotFoundError:
+        pass
+        
+    return options
+
 @app.route('/')
 def index():
     # 1. Get parameters from URL (e.g., /?drug_name=Diazepam)
@@ -192,6 +220,10 @@ def index():
     
     sort_by = request.args.get('sort', 'price_per_unit') # Default to price_per_unit
     sort_dir = request.args.get('direction', 'asc') # Default to asc
+    
+    # Get dropdown options
+    dropdown_options = get_dropdown_options()
+    
     # 2. Pass filters to data function
     prescriptions, min_price, avg_cost, max_price, min_row, max_row = get_joined_data(filters=filter_params, sort_by=sort_by, sort_dir=sort_dir)
     
@@ -210,7 +242,8 @@ def index():
     
     return render_template('index.html', prescriptions=prescriptions, current_sort=sort_by, current_dir=sort_dir, 
                            min_price=min_price, avg_cost=avg_cost, max_price=max_price,
-                           min_label=min_label, max_label=max_label)
+                           min_label=min_label, max_label=max_label,
+                           dropdown_options=dropdown_options)
 
 # --- Edit Database Routes ---
 
