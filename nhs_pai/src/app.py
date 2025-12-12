@@ -6,6 +6,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 from database_manager import DatabaseManager
 from analytics import calculate_price_stats
+from utils import validate_practice_code, validate_bnf_code, validate_postcode
 import csv
 import io
 app = Flask(__name__)
