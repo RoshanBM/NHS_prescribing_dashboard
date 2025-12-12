@@ -410,24 +410,35 @@ def analytics():
         else:
             # Fallback if category isn't in drugs directly (though it should be based on previous merges)
             categories = []
+            
+        # Get regions
+        df_prac = pd.read_csv(os.path.join(data_dir, 'clean_practices.csv'))
+        regions = sorted(df_prac['region'].dropna().unique().tolist())
+        
     except Exception:
         drugs = []
         categories = []
+        regions = []
 
     selected_drug = request.args.get('drug_name')
     selected_category = request.args.get('category')
+    selected_region = request.args.get('region')
     
     practice_graph = get_practice_distribution_graph()
     price_graph = None
+    pie_chart_data = None
     
     if selected_drug:
         price_graph = get_drug_regional_ppu(selected_drug)
     elif selected_category:
         price_graph = get_regional_cost_graph(selected_category)
         
-    return render_template('analytics.html', drugs=drugs, categories=categories, 
-                           selected_drug=selected_drug, selected_category=selected_category,
-                           practice_graph=practice_graph, price_graph=price_graph)
+    # Always get pie chart data (defaults to national if no region selected)
+    pie_chart_data = get_regional_category_distribution(selected_region)
+        
+    return render_template('analytics.html', drugs=drugs, categories=categories, regions=regions,
+                           selected_drug=selected_drug, selected_category=selected_category, selected_region=selected_region,
+                           practice_graph=practice_graph, price_graph=price_graph, pie_chart_data=pie_chart_data)
 
 def get_practice_distribution_graph():
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -592,6 +603,57 @@ def get_drug_regional_ppu(drug_name):
         }
         
         return price_graph
+
+    except FileNotFoundError:
+        return None
+
+def get_regional_category_distribution(region_name):
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(base_dir, '../data/processed')
+    
+    try:
+        # Load Data
+        df_presc = pd.read_csv(os.path.join(data_dir, 'clean_prescriptions.csv'))
+        if 'category' in df_presc.columns:
+            df_presc.drop(columns=['category'], inplace=True)
+            
+        df_prac = pd.read_csv(os.path.join(data_dir, 'clean_practices.csv'))
+        df_drug = pd.read_csv(os.path.join(data_dir, 'clean_drugs.csv'))
+
+        # 1. Merge
+        merged = pd.merge(df_presc, df_prac, on='PRACTICE_CODE', how='inner')
+        merged = pd.merge(merged, df_drug, left_on='BNF CODE', right_on='bnf_code', how='inner')
+
+        # 2. Filter by Region (if provided)
+        if region_name:
+            filtered_df = merged[merged['region'] == region_name]
+        else:
+            filtered_df = merged
+        
+        if filtered_df.empty:
+            return None
+
+        # 3. Group by Category
+        grouped = filtered_df.groupby('category').agg({
+            'ITEMS': 'sum',
+            'PRACTICE_CODE': 'nunique'
+        }).reset_index()
+
+        # 4. Format for Plotly Pie Chart
+        pie_chart = {
+            'labels': grouped['category'].tolist(),
+            'values': grouped['ITEMS'].tolist(),
+            'type': 'pie',
+            'customdata': grouped['PRACTICE_CODE'].tolist(),
+            'hovertemplate': (
+                "<b>%{label}</b><br>" +
+                "Items: %{value}<br>" +
+                "Practices: %{customdata}<br>" +
+                "<extra></extra>"
+            )
+        }
+        
+        return pie_chart
 
     except FileNotFoundError:
         return None

@@ -42,6 +42,38 @@
         </div>
         {% endif %}
 
+        <h2 class="mb-4 text-center">Regional Drug Category Distribution</h2>
+        
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <form action="/analytics" method="get" class="row g-3 justify-content-center">
+                    <div class="col-md-6">
+                        <label class="form-label">Select Region</label>
+                        <select class="form-select" name="region">
+                            <option value="" selected disabled>Choose Region...</option>
+                            {% for region in regions %}
+                            <option value="{{ region }}" {% if selected_region == region %}selected{% endif %}>{{ region }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">Show Distribution</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% if pie_chart_data %}
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Category Distribution {% if selected_region %}in {{ selected_region }}{% else %}(National){% endif %}</h5>
+            </div>
+            <div class="card-body">
+                <div id="chart_pie"></div>
+            </div>
+        </div>
+        {% endif %}
+
         <h2 class="mb-4 text-center">Regional Price Analysis</h2>
 
         <div class="card shadow-sm mb-4">
@@ -163,6 +195,16 @@
                 };
 
                 Plotly.newPlot('chart', priceData, priceLayout);
+            }
+
+            // Pie Chart
+            var pieData = {{ pie_chart_data | tojson | safe }};
+            if (pieData) {
+                var pieLayout = {
+                    title: 'Drug Category Distribution',
+                    height: 500
+                };
+                Plotly.newPlot('chart_pie', [pieData], pieLayout);
             }
         </script>
     </div>
