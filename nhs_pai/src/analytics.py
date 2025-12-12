@@ -63,7 +63,7 @@ def calculate_price_stats(df):
     
     # Calculate Min/Max based on 'price_per_unit' column
     # Ensure column exists (it should be calculated in app.py)
-    if 'price_per_unit' in df.columns:
+    if 'price_per_unit' in df.columns and df['price_per_unit'].notna().any():
         min_idx = df['price_per_unit'].idxmin()
         max_idx = df['price_per_unit'].idxmax()
         
