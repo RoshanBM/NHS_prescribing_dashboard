@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, url_for, flash, redirect
+from flask import Flask, render_template, request, url_for, flash, redirect, Response
 import pandas as pd
 import os
 import re
@@ -6,7 +6,8 @@ import logging
 from logging.handlers import RotatingFileHandler
 from database_manager import DatabaseManager
 from analytics import calculate_price_stats
-
+import csv
+import io
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'  # Required for flash messages
 
@@ -18,9 +19,6 @@ log_file = os.path.join(log_dir, 'app.log')
 handler = RotatingFileHandler(log_file, maxBytes=100000, backupCount=3)
 handler.setLevel(logging.INFO)
 formatter = logging.Formatter('[%(asctime)s] %(levelname)s [%(remote_addr)s] %(message)s')
-# We need to inject remote_addr into the record, or just include it in the message.
-# Simpler to just include it in the message for now, or use a custom filter.
-# Let's stick to standard formatter and put IP in the message.
 formatter = logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s')
 handler.setFormatter(formatter)
 
@@ -197,6 +195,39 @@ def get_joined_data(filters=None, sort_by='price_per_unit', sort_dir='asc'):
         
     except FileNotFoundError:
         return [], 0, 0, 0, {}, {}
+
+@app.route('/export')
+def export_csv():
+
+    filter_params = {
+        'drug_name': request.args.get('drug_name'),
+        'practice_name': request.args.get('doctor'),
+        'region': request.args.get('region'),
+        'category': request.args.get('category')
+    }
+    
+
+    # Unpack the tuple returned by get_joined_data. We only need the first element (the list of records).
+    result = get_joined_data(filters=filter_params)
+    
+    # Check if result is valid and has data
+    if not result or not result[0]:
+        return Response("No data found", mimetype="text/plain")
+        
+    data = result[0]
+    df_export = pd.DataFrame(data)
+    
+
+    output = io.StringIO()
+    df_export.to_csv(output, index=False)
+    csv_string = output.getvalue()
+    
+
+    return Response(
+        csv_string,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment;filename=nhs_prescribing_data.csv"}
+    )
 
 def get_dropdown_options():
     base_dir = os.path.dirname(os.path.abspath(__file__))
