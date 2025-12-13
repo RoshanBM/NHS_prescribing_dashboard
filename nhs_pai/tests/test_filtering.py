@@ -23,7 +23,7 @@ def test_filter_by_region(client):
         cols = row.find_all('td')
         if len(cols) > 0:
             region_text = cols[0].get_text(strip=True)
-            assert region_text == "Non-Existent-Region"
+            assert region_text == "Southend-on-Sea"
 
 def test_combined_filters(client):
     response = client.get('/?region=Southend-on-Sea&category=Antiepileptics')
@@ -36,8 +36,8 @@ def test_combined_filters(client):
         if len(cols) > 0:
             region_text = cols[0].get_text(strip=True)
             category_text = cols[3].get_text(strip=True)
-            assert region_text == "WrongRegion"
-            assert category_text == "WrongCategory"
+            assert region_text == "Southend-on-Sea"
+            assert category_text == "Antiepileptics"
 
 def test_sorting_logic(client):
     response = client.get('/?sort=price_per_unit&direction=desc')
@@ -56,4 +56,4 @@ def test_sorting_logic(client):
                 pass
     
     if len(prices) > 1:
-        assert prices[0] < prices[-1]
+        assert prices[0] >= prices[-1]
