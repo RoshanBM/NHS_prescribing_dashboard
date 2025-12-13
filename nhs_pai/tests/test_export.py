@@ -38,3 +38,22 @@ def test_export_filtered_data_as_csv(client):
 
     region_idx = headers.index('region')
     assert region_filter in first_row[region_idx]
+
+def test_export_combined_filters(client):
+    response = client.get('/export?region=Southend-on-Sea&category=Antiepileptics')
+    assert response.status_code == 200
+    
+    csv_content = response.data.decode('utf-8')
+    csv_reader = csv.reader(io.StringIO(csv_content))
+    headers = next(csv_reader)
+    
+    assert "region" in headers
+    assert "category" in headers
+    
+    first_row = next(csv_reader)
+    
+    region_idx = headers.index('region')
+    category_idx = headers.index('category')
+    
+    assert first_row[region_idx] == "Southend-on-Sea"
+    assert first_row[category_idx] == "Antiepileptics"
