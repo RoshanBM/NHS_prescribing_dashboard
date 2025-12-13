@@ -33,9 +33,19 @@ def client():
     # Cleanup
     app_module.get_db_manager = original_get_db_manager
     if os.path.exists(TEST_DB):
-        os.remove(TEST_DB)
+        try:
+            os.remove(TEST_DB)
+        except PermissionError:
+            pass
 
-def test_crud_practice_success(client):
+@pytest.fixture
+def db_verifier():
+    """Fixture to verify database state."""
+    manager = DatabaseManager(TEST_DB)
+    yield manager
+    manager.close_connection()
+
+def test_crud_practice_success(client, db_verifier):
     # 1. Create (POST)
     response = client.post('/edit_database/add_practice', data={
         'practice_code': 'TEST01',
@@ -47,9 +57,7 @@ def test_crud_practice_success(client):
     assert b'Practice added successfully!' in response.data
     
     # 2. Read (Verify it exists in DB)
-    manager = DatabaseManager(TEST_DB)
-    practice = manager.get_practice('TEST01')
-    manager.close_connection()
+    practice = db_verifier.get_practice('TEST01')
     assert practice is not None
     assert practice[1] == 'Test Practice'
 
@@ -59,21 +67,17 @@ def test_crud_practice_success(client):
         'practice_name': 'Updated Practice'
     }, follow_redirects=True)
     
-    manager = DatabaseManager(TEST_DB)
-    practice = manager.get_practice('TEST01')
-    manager.close_connection()
+    practice = db_verifier.get_practice('TEST01')
     assert practice[1] == 'Updated Practice'
 
     # 4. Delete
     response = client.get('/edit_database/delete_practice/TEST01', follow_redirects=True)
     assert b'Practice deleted successfully!' in response.data
     
-    manager = DatabaseManager(TEST_DB)
-    practice = manager.get_practice('TEST01')
-    manager.close_connection()
+    practice = db_verifier.get_practice('TEST01')
     assert practice is None
 
-def test_crud_drug_success(client):
+def test_crud_drug_success(client, db_verifier):
     # 1. Create Drug
     client.post('/edit_database/add_drug', data={
         'bnf_code': 'TESTDRUG01',
@@ -81,9 +85,7 @@ def test_crud_drug_success(client):
     }, follow_redirects=True)
     
     # 2. Read (Verify it exists)
-    manager = DatabaseManager(TEST_DB)
-    drug = manager.get_drug('TESTDRUG01')
-    manager.close_connection()
+    drug = db_verifier.get_drug('TESTDRUG01')
     
     assert drug is not None
     assert drug[1] == 'Test Drug'
@@ -110,8 +112,6 @@ def test_crud_prescription_success(client):
     }, follow_redirects=True)
     
     # 2. Delete Prescription
-    
     response = client.get('/edit_database/delete_prescription/1', follow_redirects=True)
-    
     
     assert b'Prescription deleted successfully!' in response.data
