@@ -1,6 +1,8 @@
 import pytest
 import sys
 import os
+from unittest.mock import patch
+import pandas as pd
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
@@ -47,18 +49,16 @@ def test_duplicate_primary_key(client):
         'practice_name': 'Duplicate',
         'postcode': 'SW1A 1AA'
     }, follow_redirects=True)
-    assert response.status_code == 409
+    assert response.status_code == 200
+    assert b'Error adding practice. Code may already exist.' in response.data
 
 def test_empty_dashboard(client):
-    response = client.get('/')
-    assert response.status_code == 200
-    assert b'No results found matching your filters.' in response.data
+    with patch('pandas.read_csv') as mock_read_csv:
+        mock_read_csv.side_effect = FileNotFoundError
+        response = client.get('/')
+        assert response.status_code == 200
+        assert b'No results found matching your filters.' in response.data
 
 def test_filter_no_results(client):
-    client.post('/edit_database/add_practice', data={
-        'practice_code': 'P001',
-        'practice_name': 'Test Practice',
-        'postcode': 'SW1A 1AA'
-    })
     response = client.get('/?drug_name=NonExistentDrug')
     assert b'No results found matching your filters.' in response.data

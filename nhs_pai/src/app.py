@@ -358,6 +358,10 @@ def add_practice():
     
     app.logger.info(f"User {request.remote_addr} attempting to add practice: {code}, {name}")
 
+    if not name or not name.strip():
+        flash('Practice name is required', 'danger')
+        return redirect(url_for('edit_database'))
+
     if not validate_practice_code(code):
         flash(f'Invalid Practice Code format: {code}. Must be 6 alphanumeric characters.', 'danger')
         return redirect(url_for('edit_database'))
