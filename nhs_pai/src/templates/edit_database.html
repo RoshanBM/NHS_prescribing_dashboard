@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Database - NHS Prescription Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">NHS Dashboard</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">Back to Dashboard</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <h1 class="mb-4">Edit Database</h1>
+
+        <ul class="nav nav-tabs mb-4" id="dbTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if active_tab == 'practices' %}active{% endif %}" id="practices-tab" data-bs-toggle="tab" data-bs-target="#practices" type="button" role="tab">Practices</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if active_tab == 'drugs' %}active{% endif %}" id="drugs-tab" data-bs-toggle="tab" data-bs-target="#drugs" type="button" role="tab">Drugs</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if active_tab == 'prescriptions' %}active{% endif %}" id="prescriptions-tab" data-bs-toggle="tab" data-bs-target="#prescriptions" type="button" role="tab">Prescriptions</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="dbTabsContent">
+            <!-- Practices Tab -->
+            <div class="tab-pane fade {% if active_tab == 'practices' %}show active{% endif %}" id="practices" role="tabpanel">
+                <div class="card mb-4">
+                    <div class="card-header">Add New Practice</div>
+                    <div class="card-body">
+                        <form action="/edit_database/add_practice" method="POST" class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Practice Code</label>
+                                <input type="text" class="form-control" name="practice_code" placeholder="e.g. A81001" required>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label">Practice Name</label>
+                                <input type="text" class="form-control" name="practice_name" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Postcode</label>
+                                <input type="text" class="form-control" name="postcode" required>
+                            </div>
+                            <div class="col-md-1 d-flex align-items-end">
+                                <button type="submit" class="btn btn-success w-100">Add</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <h3>Existing Practices</h3>
+                <form method="GET" action="/edit_database" class="row g-3 mb-3">
+                    <div class="col-auto">
+                        <input type="text" name="p_code" class="form-control form-control-sm" placeholder="Filter Code" value="{{ p_code }}">
+                    </div>
+                    <div class="col-auto">
+                        <input type="text" name="p_name" class="form-control form-control-sm" placeholder="Filter Name" value="{{ p_name }}">
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-sm btn-secondary">Filter</button>
+                        <a href="/edit_database" class="btn btn-sm btn-outline-secondary">Clear</a>
+                    </div>
+                </form>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Name</th>
+                                <th>Postcode</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for practice in practices %}
+                            <tr>
+                                <form action="/edit_database/update_practice" method="POST">
+                                    <td>
+                                        <input type="hidden" name="practice_code" value="{{ practice[0] }}">
+                                        {{ practice[0] }}
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control form-control-sm" name="practice_name" value="{{ practice[1] }}">
+                                    </td>
+                                    <td>
+                                        {{ practice[2] }}
+                                    </td>
+                                    <td>
+                                        <button type="submit" class="btn btn-sm btn-primary">Update</button>
+                                        <a href="/edit_database/delete_practice/{{ practice[0] }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</a>
+                                    </td>
+                                </form>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Drugs Tab -->
+            <div class="tab-pane fade {% if active_tab == 'drugs' %}show active{% endif %}" id="drugs" role="tabpanel">
+                <div class="card mb-4">
+                    <div class="card-header">Add New Drug</div>
+                    <div class="card-body">
+                        <form action="/edit_database/add_drug" method="POST" class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">BNF Code</label>
+                                <input type="text" class="form-control" name="bnf_code" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Drug Name</label>
+                                <input type="text" class="form-control" name="drug_name" required>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-success w-100">Add</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <h3>Existing Drugs</h3>
+                <form method="GET" action="/edit_database" class="row g-3 mb-3">
+                    <div class="col-auto">
+                        <input type="text" name="d_code" class="form-control form-control-sm" placeholder="Filter Code" value="{{ d_code }}">
+                    </div>
+                    <div class="col-auto">
+                        <input type="text" name="d_name" class="form-control form-control-sm" placeholder="Filter Name" value="{{ d_name }}">
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-sm btn-secondary">Filter</button>
+                        <a href="/edit_database" class="btn btn-sm btn-outline-secondary">Clear</a>
+                    </div>
+                </form>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>BNF Code</th>
+                                <th>Name</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for drug in drugs %}
+                            <tr>
+                                <form action="/edit_database/update_drug" method="POST">
+                                    <td>
+                                        <input type="hidden" name="bnf_code" value="{{ drug[0] }}">
+                                        {{ drug[0] }}
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control form-control-sm" name="drug_name" value="{{ drug[1] }}">
+                                    </td>
+                                    <td>
+                                        <button type="submit" class="btn btn-sm btn-primary">Update</button>
+                                        <a href="/edit_database/delete_drug/{{ drug[0] }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</a>
+                                    </td>
+                                </form>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Prescriptions Tab -->
+            <div class="tab-pane fade {% if active_tab == 'prescriptions' %}show active{% endif %}" id="prescriptions" role="tabpanel">
+                <div class="card mb-4">
+                    <div class="card-header">Add New Prescription</div>
+                    <div class="card-body">
+                        <form action="/edit_database/add_prescription" method="POST" class="row g-3">
+                            <div class="col-md-2">
+                                <label class="form-label">Practice Code</label>
+                                <input type="text" class="form-control" name="practice_code" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">BNF Code</label>
+                                <input type="text" class="form-control" name="bnf_code" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Items</label>
+                                <input type="number" class="form-control" name="items" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Act Cost</label>
+                                <input type="number" step="0.01" class="form-control" name="act_cost" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Quantity</label>
+                                <input type="number" step="0.01" class="form-control" name="quantity" required>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-success w-100">Add</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <h3>Existing Prescriptions</h3>
+                <form method="GET" action="/edit_database" class="row g-3 mb-3">
+                    <div class="col-auto">
+                        <input type="text" name="pr_practice" class="form-control form-control-sm" placeholder="Filter Practice Code" value="{{ pr_practice }}">
+                    </div>
+                    <div class="col-auto">
+                        <input type="text" name="pr_drug" class="form-control form-control-sm" placeholder="Filter Drug Code" value="{{ pr_drug }}">
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-sm btn-secondary">Filter</button>
+                        <a href="/edit_database" class="btn btn-sm btn-outline-secondary">Clear</a>
+                    </div>
+                </form>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Practice</th>
+                                <th>Drug</th>
+                                <th>Items</th>
+                                <th>Cost</th>
+                                <th>Quantity</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for prescription in prescriptions %}
+                            <tr>
+                                <form action="/edit_database/update_prescription" method="POST">
+                                    <td>
+                                        <input type="hidden" name="id" value="{{ prescription[0] }}">
+                                        {{ prescription[0] }}
+                                    </td>
+                                    <td>{{ prescription[1] }}</td>
+                                    <td>{{ prescription[2] }}</td>
+                                    <td>
+                                        <input type="number" class="form-control form-control-sm" name="items" value="{{ prescription[3] }}" style="width: 80px;">
+                                    </td>
+                                    <td>
+                                        <input type="number" step="0.01" class="form-control form-control-sm" name="act_cost" value="{{ prescription[4] }}" style="width: 100px;">
+                                    </td>
+                                    <td>
+                                        <input type="number" step="0.01" class="form-control form-control-sm" name="quantity" value="{{ prescription[5] }}" style="width: 100px;">
+                                    </td>
+                                    <td>
+                                        <button type="submit" class="btn btn-sm btn-primary">Update</button>
+                                        <a href="/edit_database/delete_prescription/{{ prescription[0] }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</a>
+                                    </td>
+                                </form>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

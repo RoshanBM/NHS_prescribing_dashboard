@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>NHS CNS Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .autocomplete-items {
+            position: absolute;
+            border: 1px solid rgba(0,0,0,.15);
+            border-radius: 0.375rem;
+            z-index: 1000;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: #fff;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+        .autocomplete-item {
+            padding: 0.25rem 1rem;
+            cursor: pointer;
+            background-color: #fff;
+            color: #212529;
+        }
+        .autocomplete-item:hover {
+            background-color: #e9ecef;
+        }
+    </style>
+</head>
+<body class="container mt-4">
+    
+    <div class="row mb-4 align-items-end">
+        <div class="col-md-6">
+            <h1>NHS CNS Prescribing Data</h1>
+        </div>
+        <div class="col-md-6 text-end">
+            <span class="me-3 fw-bold">Total Items Tracked: {{ total_items_tracked }}</span>
+            <a href="/analytics" class="btn btn-outline-primary me-2">Analytics</a>
+            <a href="/edit_database" class="btn btn-outline-secondary">Edit Database</a>
+        </div>
+    </div>
+
+    <div class="card p-3 mb-4 bg-light">
+        <form method="GET" action="/">
+            <div class="row g-3">
+                <div class="col-md-2 position-relative">
+                    <label class="form-label">Medicine Name</label>
+                    <input type="text" name="drug_name" class="form-control" autocomplete="off" placeholder="Type to search..." value="{{ request.args.get('drug_name', '') }}">
+                </div>
+                <div class="col-md-2 position-relative">
+                    <label class="form-label">Doctor / Practice</label>
+                    <input type="text" name="doctor" class="form-control" autocomplete="off" placeholder="Type to search..." value="{{ request.args.get('doctor', '') }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Region</label>
+                    <select name="region" class="form-select">
+                        <option value="">All Regions</option>
+                        {% for region in dropdown_options.regions %}
+                        <option value="{{ region }}" {% if request.args.get('region') == region %}selected{% endif %}>{{ region }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Post Code</label>
+                    <input type="text" name="post_code" class="form-control" placeholder="e.g. SW1A" value="{{ request.args.get('post_code', '') }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Category</label>
+                    <select name="category" class="form-select">
+                        <option value="">All Categories</option>
+                        {% for category in dropdown_options.categories %}
+                        <option value="{{ category }}" {% if request.args.get('category') == category %}selected{% endif %}>{{ category }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Filter</button>
+                </div>
+            </div>
+            <div class="mt-2 text-end">
+                <a href="{{ url_for('export_csv', **request.args) }}" class="btn btn-success btn-sm me-2">Export as CSV</a>
+                <a href="/" class="text-decoration-none small">Clear Filters</a>
+            </div>
+        </form>
+    </div>
+
+    {% if request.args.get('drug_name') or request.args.get('category') %}
+    <div class="row justify-content-center mb-4">
+        <div class="col-md-3">
+            <div class="card text-center bg-success text-white">
+                <div class="card-body py-2">
+                    <h5 class="card-title mb-0">Lowest Price / Item</h5>
+                    <p class="card-text fs-4 fw-bold">£{{ "%.2f"|format(min_price) }}</p>
+                    {% if min_label %}
+                    <p class="card-text small">{{ min_label }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-info text-white">
+                <div class="card-body py-2">
+                    <h5 class="card-title mb-0">Average Cost / Item</h5>
+                    <p class="card-text fs-4 fw-bold">£{{ "%.2f"|format(avg_cost) }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-danger text-white">
+                <div class="card-body py-2">
+                    <h5 class="card-title mb-0">Highest Price / Item</h5>
+                    <p class="card-text fs-4 fw-bold">£{{ "%.2f"|format(max_price) }}</p>
+                    {% if max_label %}
+                    <p class="card-text small">{{ max_label }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0" style="max-height: 600px; overflow-y: auto;">
+            <table class="table table-striped table-hover mb-0">
+                <thead class="table-dark" style="position: sticky; top: 0; z-index: 1;">
+                    <tr>
+                        <th>Region</th>
+                        <th>Practice Name</th>
+                        <th>Post Code</th>
+                        <th>Category</th>
+                        <th>Drug Details</th>
+                        <th>
+                            <a href="{{ sort_url('price_per_unit') }}" class="text-white text-decoration-none">
+                                Price / Unit
+                                {% if current_sort == 'price_per_unit' %}
+                                    {{ '▲' if current_dir == 'asc' else '▼' }}
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ sort_url('items') }}" class="text-white text-decoration-none">
+                                Items
+                                {% if current_sort == 'items' %}
+                                    {{ '▲' if current_dir == 'asc' else '▼' }}
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="text-end">
+                            <a href="{{ sort_url('cost') }}" class="text-white text-decoration-none">
+                                Cost (£)
+                                {% if current_sort == 'cost' %}
+                                    {{ '▲' if current_dir == 'asc' else '▼' }}
+                                {% endif %}
+                            </a>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in prescriptions %}
+                    <tr>
+                        <td><span class="badge bg-secondary">{{ row.region }}</span></td>
+                        <td>{{ row.practice_name }}</td>
+                        <td>{{ row.post_code }}</td>
+                        <td><small>{{ row.category }}</small></td>
+                        <td>
+                            <strong>{{ row.drug_name }}</strong><br>
+                            <small class="text-muted">{{ row.presentation }}</small>
+                        </td>
+                        <td>
+                            £{{ "%.2f"|format(row.price_per_unit) }}
+                            {% if row.is_cheapest %}
+                                <span class="badge bg-success ms-1">Cheapest</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ row.total_items }}</td>
+                        <td class="text-end fw-bold">£{{ "%.2f"|format(row.cost) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4">
+                            <span class="text-muted">No results found matching your filters.</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const drugs = {{ dropdown_options.drugs | tojson }};
+        const practices = {{ dropdown_options.practices | tojson }};
+
+        function setupAutocomplete(inputId, data) {
+            const input = document.querySelector(`input[name="${inputId}"]`);
+            if (!input) return;
+
+            // Create container for results
+            const container = document.createElement('div');
+            container.className = 'autocomplete-items';
+            container.style.display = 'none';
+            input.parentNode.appendChild(container);
+
+            input.addEventListener('input', function() {
+                const val = this.value;
+                container.innerHTML = '';
+                if (!val) {
+                    container.style.display = 'none';
+                    return;
+                }
+
+                let count = 0;
+                for (let i = 0; i < data.length; i++) {
+                    // Check if item starts with the input value (case insensitive)
+                    if (data[i].toLowerCase().startsWith(val.toLowerCase())) {
+                        const item = document.createElement('div');
+                        item.className = 'autocomplete-item';
+                        item.textContent = data[i];
+                        item.addEventListener('click', function() {
+                            input.value = this.textContent;
+                            container.style.display = 'none';
+                        });
+                        container.appendChild(item);
+                        count++;
+                        if (count >= 50) break; // Limit results for performance
+                    }
+                }
+                
+                if (count > 0) {
+                    container.style.display = 'block';
+                } else {
+                    container.style.display = 'none';
+                }
+            });
+
+            // Close when clicking outside
+            document.addEventListener('click', function(e) {
+                if (e.target !== input && e.target !== container) {
+                    container.style.display = 'none';
+                }
+            });
+        }
+
+        setupAutocomplete('drug_name', drugs);
+        setupAutocomplete('doctor', practices);
+    </script>
+</body>
+</html>
