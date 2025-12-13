@@ -109,7 +109,7 @@ def test_price_per_unit_calculation(client):
     from app import get_joined_data
     
     # Fetch data (mocking filters as None)
-    data, _, _, _, _, _ = get_joined_data()
+    data, _, _, _, _, _, _ = get_joined_data()
     
     # 3. Check the first record (assuming data exists)
     if data:
@@ -133,16 +133,16 @@ def test_sorting_functionality(client):
     from app import get_joined_data
     
     # Test Sorting by Items Descending
-    data_desc, _, _, _, _, _ = get_joined_data(sort_by='items', sort_dir='desc')
+    data_desc, _, _, _, _, _, _ = get_joined_data(sort_by='items', sort_dir='desc')
     if len(data_desc) >= 2:
         assert data_desc[0]['total_items'] >= data_desc[1]['total_items']
         
     # Test Sorting by Cost Ascending (Cheapest first)
-    data_asc, _, _, _, _, _ = get_joined_data(sort_by='cost', sort_dir='asc')
+    data_asc, _, _, _, _, _, _ = get_joined_data(sort_by='cost', sort_dir='asc')
     if len(data_asc) >= 2:
         assert data_asc[0]['cost'] <= data_asc[1]['cost']
 
     # Test Sorting by Price Per Unit
-    data_ppu, _, _, _, _, _ = get_joined_data(sort_by='price_per_unit', sort_dir='desc')
+    data_ppu, _, _, _, _, _, _ = get_joined_data(sort_by='price_per_unit', sort_dir='desc')
     if len(data_ppu) >= 2:
         assert data_ppu[0]['price_per_unit'] >= data_ppu[1]['price_per_unit']

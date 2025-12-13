@@ -189,13 +189,17 @@ def get_joined_data(filters=None, sort_by='price_per_unit', sort_dir='asc'):
         
         # Apply Pandas Sort
         merged_df = merged_df.sort_values(by=sort_by, ascending=ascending)
+        
+        # Calculate total items tracked (before slicing)
+        total_items_tracked = len(merged_df)
+
         # Select columns to display
         final_df = merged_df[['practice_name', 'drug_name', 'presentation', 'total_items', 'cost', 'bnf_code', 'region', 'category', 'post_code', 'price_per_unit', 'is_cheapest']]
         
-        return final_df.head(100).to_dict(orient='records'), min_price, avg_cost, max_price, min_row, max_row
+        return final_df.head(100).to_dict(orient='records'), min_price, avg_cost, max_price, min_row, max_row, total_items_tracked
         
     except FileNotFoundError:
-        return [], 0, 0, 0, {}, {}
+        return [], 0, 0, 0, {}, {}, 0
 
 @app.route('/export')
 def export_csv():
@@ -280,7 +284,7 @@ def index():
     dropdown_options = get_dropdown_options()
     
     # 2. Pass filters to data function
-    prescriptions, min_price, avg_cost, max_price, min_row, max_row = get_joined_data(filters=filter_params, sort_by=sort_by, sort_dir=sort_dir)
+    prescriptions, min_price, avg_cost, max_price, min_row, max_row, total_items_tracked = get_joined_data(filters=filter_params, sort_by=sort_by, sort_dir=sort_dir)
     
     # Determine labels for Min/Max boxes
     min_label = ""
@@ -298,7 +302,7 @@ def index():
     return render_template('index.html', prescriptions=prescriptions, current_sort=sort_by, current_dir=sort_dir, 
                            min_price=min_price, avg_cost=avg_cost, max_price=max_price,
                            min_label=min_label, max_label=max_label,
-                           dropdown_options=dropdown_options)
+                           dropdown_options=dropdown_options, total_items_tracked=total_items_tracked)
 
 # --- Edit Database Routes ---
 
