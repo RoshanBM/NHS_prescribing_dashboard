@@ -35,17 +35,45 @@ def client():
     if os.path.exists(TEST_DB):
         os.remove(TEST_DB)
 
-def test_crud_practice_failure(client):
-    # 1. Create (POST).
+def test_crud_practice_success(client):
+    # 1. Create (POST)
     response = client.post('/edit_database/add_practice', data={
         'practice_code': 'TEST01',
         'practice_name': 'Test Practice',
         'postcode': 'SW1A 1AA'
     }, follow_redirects=True)
     
-    assert response.status_code == 404 
+    assert response.status_code == 200
+    assert b'Practice added successfully!' in response.data
+    
+    # 2. Read (Verify it exists in DB)
+    manager = DatabaseManager(TEST_DB)
+    practice = manager.get_practice('TEST01')
+    manager.close_connection()
+    assert practice is not None
+    assert practice[1] == 'Test Practice'
 
-def test_crud_drug_failure(client):
+    # 3. Update
+    client.post('/edit_database/update_practice', data={
+        'practice_code': 'TEST01',
+        'practice_name': 'Updated Practice'
+    }, follow_redirects=True)
+    
+    manager = DatabaseManager(TEST_DB)
+    practice = manager.get_practice('TEST01')
+    manager.close_connection()
+    assert practice[1] == 'Updated Practice'
+
+    # 4. Delete
+    response = client.get('/edit_database/delete_practice/TEST01', follow_redirects=True)
+    assert b'Practice deleted successfully!' in response.data
+    
+    manager = DatabaseManager(TEST_DB)
+    practice = manager.get_practice('TEST01')
+    manager.close_connection()
+    assert practice is None
+
+def test_crud_drug_success(client):
     # 1. Create Drug
     client.post('/edit_database/add_drug', data={
         'bnf_code': 'TESTDRUG01',
@@ -57,9 +85,10 @@ def test_crud_drug_failure(client):
     drug = manager.get_drug('TESTDRUG01')
     manager.close_connection()
     
-    assert drug is None 
+    assert drug is not None
+    assert drug[1] == 'Test Drug'
 
-def test_crud_prescription_failure(client):
+def test_crud_prescription_success(client):
     # Setup: Add Practice and Drug first
     client.post('/edit_database/add_practice', data={
         'practice_code': 'P001',
@@ -85,4 +114,4 @@ def test_crud_prescription_failure(client):
     response = client.get('/edit_database/delete_prescription/1', follow_redirects=True)
     
     
-    assert b'Prescription deleted successfully!' not in response.data
+    assert b'Prescription deleted successfully!' in response.data
