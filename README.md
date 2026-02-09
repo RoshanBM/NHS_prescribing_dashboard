@@ -1,9 +1,5 @@
 # NHS CNS Prescribing Data Dashboard
 
-
-## WM9QF:Programming for Artificial Intelligence Individual Task 1 - Roshan Balaji Mahashabde (u5735905)
-
-
 A web-based dashboard for analyzing NHS Central Nervous System (CNS) prescribing data. This application allows users to explore prescription costs, view regional analytics, and manage the underlying dataset.
 
 ## Features
