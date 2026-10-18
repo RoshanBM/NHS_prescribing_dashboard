@@ -23,7 +23,7 @@ This project narrows the release to BNF Chapter 4 (Central Nervous System), join
 | **Practice address file** (`raw_address.csv`) | 9,324 practices with name, address and postcode (no header row) |
 | **Licence** | [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/) |
 
-The data files are not stored in this repository because of their size. The processed CSVs are attached to the [GitHub release](https://github.com/RoshanBM/PAI_Individual_1/releases), and [How to run](#how-to-run) explains how to use them or rebuild them from the raw NHS files.
+The data files are not stored in this repository because of their size. The processed CSVs are attached to the [GitHub release](https://github.com/RoshanBM/NHS_prescribing_dashboard/releases), and [How to run](#how-to-run) explains how to use them or rebuild them from the raw NHS files.
 
 ## Method
 
@@ -103,8 +103,8 @@ All figures below were calculated from the processed December 2019 data in this 
 **1. Clone the repository and install dependencies**
 
 ```bash
-git clone https://github.com/RoshanBM/PAI_Individual_1.git
-cd PAI_Individual_1
+git clone https://github.com/RoshanBM/NHS_prescribing_dashboard.git
+cd NHS_prescribing_dashboard
 
 python -m venv .venv
 # Windows (PowerShell):  .\.venv\Scripts\Activate.ps1
@@ -114,7 +114,7 @@ pip install -r requirements.txt
 
 **2. Get the data** (choose one option)
 
-*Option A: quick start (about 18 MB).* Download [`processed-data.zip`](https://github.com/RoshanBM/PAI_Individual_1/releases/download/v1.0/processed-data.zip) from the [latest release](https://github.com/RoshanBM/PAI_Individual_1/releases) and unzip it into `nhs_pai/data/processed/`, so that folder contains `clean_drugs.csv`, `clean_practices.csv` and `clean_prescriptions.csv`. Then skip to step 4.
+*Option A: quick start (about 18 MB).* Download [`processed-data.zip`](https://github.com/RoshanBM/NHS_prescribing_dashboard/releases/download/v1.0/processed-data.zip) from the [latest release](https://github.com/RoshanBM/NHS_prescribing_dashboard/releases) and unzip it into `nhs_pai/data/processed/`, so that folder contains `clean_drugs.csv`, `clean_practices.csv` and `clean_prescriptions.csv`. Then skip to step 4.
 
 *Option B: full pipeline (about 776 MB).* From the [NHS Digital December 2019 release page](https://digital.nhs.uk/data-and-information/publications/statistical/practice-level-prescribing-data/december-2019), download these two files, rename them, and put them in `nhs_pai/data/raw/`:
 
@@ -152,7 +152,7 @@ python -m pytest nhs_pai/tests/
 ## Project structure
 
 ```
-PAI_Individual_1/
+NHS_prescribing_dashboard/
 ├── nhs_pai/
 │   ├── data/
 │   │   ├── raw/                # NHS source CSVs (download; not committed)
