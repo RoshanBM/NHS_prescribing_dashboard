@@ -1,3 +1,24 @@
+# --- Project-specific ---
+# Local virtual environment
+pai_indv/
+
+# All data files (raw NHS downloads, processed CSVs, SQLite database).
+# Download the raw data and run the preprocessing script; see README.
+# The folder structure is kept via .gitkeep files.
+nhs_pai/data/**
+!nhs_pai/data/**/
+!nhs_pai/data/**/.gitkeep
+
+# Application logs
+nhs_pai/logs/
+
+# Editor / OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Standard Python template ---
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -206,4 +227,3 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-pai_indv/
